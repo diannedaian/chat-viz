@@ -1,0 +1,20 @@
+# macOS / editor noise
+.DS_Store
+
+# Python local environment
+.venv/
+__pycache__/
+*.pyc
+
+# Personal chat history / exports (privacy)
+_chat.txt
+*私聊*.json
+*私聊*.html
+*Standalone*.html
+
+# Generated reports and local outputs
+report/figures/
+report/*.html
+
+# Optional local exports
+*.zip

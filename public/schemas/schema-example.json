@@ -1,0 +1,52 @@
+{
+  "meta": {
+    "schemaVersion": "1.0.0",
+    "title": "My Chat Story",
+    "generatedAt": "2026-04-30T17:00:00.000Z",
+    "source": "whatsapp_txt"
+  },
+  "people": [
+    { "id": "p1", "name": "Alex" },
+    { "id": "p2", "name": "Jamie" }
+  ],
+  "metrics": {
+    "totalMessages": 12450,
+    "longestStreakDays": 87,
+    "avgMessagesPerDay": 68,
+    "activeDays": 183,
+    "totalDays": 210,
+    "replyStats": [
+      { "name": "Alex", "medianSec": 42, "meanSec": 320, "count": 4400 },
+      { "name": "Jamie", "medianSec": 39, "meanSec": 301, "count": 4398 }
+    ],
+    "topWords": [
+      { "word": "sleep", "count": 333 },
+      { "word": "movie", "count": 250 }
+    ],
+    "languageShare": { "zh": 22.4, "en": 72.9, "mixed": 4.7 },
+    "busiestHour": { "hour": 23, "count": 1210 },
+    "topDays": [
+      { "date": "2026-02-14", "count": 245 },
+      { "date": "2026-01-01", "count": 210 }
+    ],
+    "calls": {
+      "totalSeconds": 112000,
+      "count": 312,
+      "longestSeconds": 4400,
+      "averageSeconds": 358
+    }
+  },
+  "slides": {
+    "cover": { "title": "REPORT", "subtitle": "Alex x Jamie.", "startYear": 2025, "endYear": 2026 },
+    "ending": { "title": "Alex x Jamie", "startYear": 2025, "endLabel": "present" }
+  },
+  "customization": {
+    "relationshipType": "friendship",
+    "themePreset": "forest",
+    "customTheme": {},
+    "fontPreset": "space-caveat",
+    "startDate": "2025-09-01",
+    "endDate": "2026-03-30",
+    "daysCountOverride": ""
+  }
+}

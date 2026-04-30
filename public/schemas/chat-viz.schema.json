@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://chatviz.local/chat-viz.schema.json",
+  "title": "ChatVizData",
+  "type": "object",
+  "required": ["meta", "people", "metrics", "slides", "customization"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["schemaVersion", "title", "generatedAt"],
+      "properties": {
+        "schemaVersion": { "type": "string" },
+        "title": { "type": "string" },
+        "generatedAt": { "type": "string", "format": "date-time" },
+        "source": { "type": "string" }
+      }
+    },
+    "people": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": ["id", "name"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" }
+        }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "required": [
+        "totalMessages",
+        "longestStreakDays",
+        "avgMessagesPerDay",
+        "activeDays",
+        "totalDays",
+        "replyStats",
+        "topWords",
+        "languageShare",
+        "busiestHour",
+        "topDays",
+        "calls"
+      ],
+      "properties": {
+        "totalMessages": { "type": "number", "minimum": 0 },
+        "longestStreakDays": { "type": "number", "minimum": 0 },
+        "avgMessagesPerDay": { "type": "number", "minimum": 0 },
+        "activeDays": { "type": "number", "minimum": 0 },
+        "totalDays": { "type": "number", "minimum": 0 },
+        "replyStats": { "type": "array" },
+        "topWords": { "type": "array" },
+        "languageShare": {
+          "type": "object",
+          "required": ["zh", "en", "mixed"],
+          "properties": {
+            "zh": { "type": "number", "minimum": 0, "maximum": 100 },
+            "en": { "type": "number", "minimum": 0, "maximum": 100 },
+            "mixed": { "type": "number", "minimum": 0, "maximum": 100 }
+          }
+        },
+        "busiestHour": {
+          "type": "object",
+          "required": ["hour", "count"],
+          "properties": {
+            "hour": { "type": "integer", "minimum": 0, "maximum": 23 },
+            "count": { "type": "number", "minimum": 0 }
+          }
+        },
+        "topDays": { "type": "array" },
+        "calls": {
+          "type": "object",
+          "required": ["totalSeconds", "count", "longestSeconds", "averageSeconds"],
+          "properties": {
+            "totalSeconds": { "type": "number", "minimum": 0 },
+            "count": { "type": "number", "minimum": 0 },
+            "longestSeconds": { "type": "number", "minimum": 0 },
+            "averageSeconds": { "type": "number", "minimum": 0 }
+          }
+        }
+      }
+    },
+    "slides": {
+      "type": "object",
+      "required": ["cover", "ending"],
+      "properties": {
+        "cover": { "type": "object" },
+        "ending": { "type": "object" }
+      }
+    },
+    "customization": {
+      "type": "object",
+      "required": ["relationshipType", "themePreset", "fontPreset", "startDate", "endDate"],
+      "properties": {
+        "relationshipType": { "type": "string", "enum": ["romantic", "friendship", "family"] },
+        "themePreset": { "type": "string" },
+        "fontPreset": { "type": "string" },
+        "startDate": { "type": "string", "format": "date" },
+        "endDate": { "type": "string", "format": "date" },
+        "daysCountOverride": { "type": "string" },
+        "customTheme": { "type": "object" }
+      }
+    }
+  }
+}

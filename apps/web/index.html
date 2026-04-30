@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chat Viz - Make Yours</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: Inter, system-ui, sans-serif;
+        background: linear-gradient(130deg, #f6f8ff, #fff1f5);
+        color: #271f2e;
+      }
+      main {
+        max-width: 980px;
+        margin: 0 auto;
+        padding: 46px 20px 70px;
+      }
+      h1 {
+        font-size: 42px;
+        margin: 0 0 8px;
+      }
+      p.lead {
+        color: #67606f;
+        margin: 0;
+      }
+      .grid {
+        margin-top: 26px;
+        display: grid;
+        grid-template-columns: 1.25fr 1fr;
+        gap: 16px;
+      }
+      .card {
+        background: white;
+        border-radius: 18px;
+        padding: 20px;
+        box-shadow: 0 14px 34px rgba(18, 14, 28, 0.09);
+      }
+      .preview {
+        border: 8px solid #101218;
+        border-radius: 26px;
+        min-height: 460px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: radial-gradient(circle at top, #fde8f3, #f4ebff);
+      }
+      .preview-inner { text-align: center; }
+      .preview-inner h2 { margin: 0; font-size: 38px; }
+      .stack {
+        display: grid;
+        gap: 12px;
+      }
+      .input-group {
+        border: 1px solid #ece7f6;
+        border-radius: 12px;
+        padding: 12px;
+        background: #fcfbff;
+      }
+      .input-group label {
+        display: block;
+        font-size: 13px;
+        color: #5f5a69;
+        margin-bottom: 8px;
+        font-weight: 600;
+      }
+      .input-group input[type="file"] {
+        width: 100%;
+      }
+      button, .button-link {
+        border: none;
+        border-radius: 10px;
+        padding: 12px 14px;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-flex;
+        justify-content: center;
+        align-items: center;
+        font-weight: 600;
+      }
+      #parseAndTweak { background: #4f46e5; color: white; }
+      #previewExample { background: #e9e7ff; color: #2a2298; }
+      #advancedParserLink { background: #f3f1f8; color: #453f50; }
+      .hint { color: #816f35; font-size: 13px; min-height: 18px; }
+      #landingErrors {
+        color: #b42318;
+        font-size: 14px;
+        min-height: 20px;
+      }
+      #landingSummary {
+        color: #1f3c2a;
+        font-size: 14px;
+        min-height: 20px;
+      }
+      .button-row { display: grid; gap: 10px; margin-top: 2px; }
+      @media (max-width: 880px) {
+        .grid { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Chat Viz</h1>
+      <p class="lead">Upload chat data, then parse and tweak your animated relationship report.</p>
+      <section class="grid">
+        <article class="card">
+          <h3 style="margin-top:0">Make yours</h3>
+          <div class="stack">
+            <div class="input-group">
+              <label for="landingJson">1) Upload JSON</label>
+              <input id="landingJson" type="file" accept=".json,application/json" />
+            </div>
+            <div class="input-group">
+              <label for="landingTxt">2) Upload WhatsApp TXT</label>
+              <input id="landingTxt" type="file" accept=".txt,text/plain" />
+            </div>
+            <div class="hint" id="landingHint"></div>
+            <div class="button-row">
+              <button id="parseAndTweak">Parse and tweak</button>
+              <button id="previewExample">3) Preview Example</button>
+              <a id="advancedParserLink" class="button-link" href="./parser.html">Advanced parser page (optional)</a>
+            </div>
+            <div id="landingSummary"></div>
+            <div id="landingErrors"></div>
+          </div>
+        </article>
+        <article class="card">
+          <div class="preview">
+            <div class="preview-inner"></div>
+          </div>
+        </article>
+      </section>
+    </main>
+    <script type="module">
+      import { buildChatVizData } from "../../src/parser/buildData.js";
+      import { parseWhatsAppTxt } from "../../src/parser/whatsapp.js";
+      import { validateChatVizData } from "../../src/shared/schema.js";
+
+      const jsonInput = document.querySelector("#landingJson");
+      const txtInput = document.querySelector("#landingTxt");
+      const parseBtn = document.querySelector("#parseAndTweak");
+      const previewBtn = document.querySelector("#previewExample");
+      const hintBox = document.querySelector("#landingHint");
+      const summaryBox = document.querySelector("#landingSummary");
+      const errorBox = document.querySelector("#landingErrors");
+
+      function setError(message) {
+        errorBox.textContent = message || "";
+      }
+
+      function setSummary(message) {
+        summaryBox.textContent = message || "";
+      }
+
+      function clearMessages() {
+        setError("");
+        setSummary("");
+      }
+
+      function encodeUtf8Base64(text) {
+        const bytes = new TextEncoder().encode(text);
+        let binary = "";
+        bytes.forEach((b) => {
+          binary += String.fromCharCode(b);
+        });
+        return btoa(binary);
+      }
+
+      function goToViewerWithData(data) {
+        // Reset stale personalization so newly uploaded data is reflected immediately.
+        localStorage.removeItem("chatviz:tweaks");
+        localStorage.removeItem("chatviz:slideIndex");
+        const serialized = JSON.stringify(data);
+        localStorage.setItem("chatviz:data", serialized);
+        const encoded = encodeUtf8Base64(serialized);
+        const shouldUseUrl = encoded.length < 1700;
+        window.location.href = shouldUseUrl ? `./viewer.html?data=${encoded}` : "./viewer.html";
+      }
+
+      parseBtn.addEventListener("click", async () => {
+        clearMessages();
+        const [jsonFile] = jsonInput.files || [];
+        const [txtFile] = txtInput.files || [];
+
+        if (!jsonFile && !txtFile) {
+          setError("Upload either a JSON file or a WhatsApp TXT file first.");
+          return;
+        }
+
+        try {
+          let data = null;
+          if (jsonFile) {
+            if (txtFile) {
+              hintBox.textContent = "Using JSON input; clear JSON to use TXT.";
+            } else {
+              hintBox.textContent = "";
+            }
+            const parsed = JSON.parse(await jsonFile.text());
+            const valid = validateChatVizData(parsed);
+            if (!valid.valid) {
+              setError(valid.errors.join(" "));
+              return;
+            }
+            data = parsed;
+          } else {
+            hintBox.textContent = "";
+            const text = await txtFile.text();
+            const messages = parseWhatsAppTxt(text);
+            if (!messages.length) {
+              setError("TXT parsed to zero messages. Check WhatsApp export format.");
+              return;
+            }
+            const built = buildChatVizData(messages);
+            const valid = validateChatVizData(built);
+            if (!valid.valid) {
+              setError(`Parsed data failed validation: ${valid.errors.join(" ")}`);
+              return;
+            }
+            data = built;
+          }
+
+          setSummary(
+            `Ready: ${(data.people?.[0]?.name || "Person 1")} x ${(data.people?.[1]?.name || "Person 2")} · ${(
+              data.metrics?.totalMessages || 0
+            ).toLocaleString()} messages`
+          );
+          goToViewerWithData(data);
+        } catch (error) {
+          setError(`Could not parse input: ${error.message}`);
+        }
+      });
+
+      previewBtn.addEventListener("click", () => {
+        localStorage.removeItem("chatviz:data");
+        localStorage.removeItem("chatviz:slideIndex");
+        localStorage.removeItem("chatviz:tweaks");
+        window.location.href = "./viewer.html";
+      });
+
+      jsonInput.addEventListener("change", () => {
+        clearMessages();
+        if (jsonInput.files?.length && txtInput.files?.length) {
+          hintBox.textContent = "Using JSON input; clear JSON to use TXT.";
+          return;
+        }
+        hintBox.textContent = "";
+      });
+
+      txtInput.addEventListener("change", () => {
+        clearMessages();
+        if (jsonInput.files?.length && txtInput.files?.length) {
+          hintBox.textContent = "Using JSON input; clear JSON to use TXT.";
+            return;
+          }
+        hintBox.textContent = "";
+      });
+    </script>
+  </body>
+</html>

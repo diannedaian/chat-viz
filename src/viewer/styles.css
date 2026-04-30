@@ -1,0 +1,279 @@
+:root {
+  --bg: #f5edd8;
+  --accent: #e8748a;
+  --secondary: #6ba3d6;
+  --text: #2a2035;
+  --muted: #8a8691;
+  --font-heading: "Caveat", cursive;
+  --font-body: "Space Grotesk", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  background: radial-gradient(circle at 10% 10%, #fff 0%, var(--bg) 40%);
+  color: var(--text);
+}
+
+.top-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(8px);
+}
+
+.top-toolbar .error {
+  color: #9f2932;
+  font-size: 13px;
+}
+
+.viewer-shell {
+  display: grid;
+  grid-template-columns: minmax(280px, 420px) minmax(240px, 340px);
+  gap: 24px;
+  justify-content: center;
+  align-items: start;
+  padding: 22px;
+}
+
+.phone {
+  border: 10px solid #131313;
+  border-radius: 34px;
+  min-height: 740px;
+  background: #101010;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.24);
+  overflow: hidden;
+}
+
+.slide-stack {
+  background: var(--bg);
+  min-height: 675px;
+  position: relative;
+}
+
+.slide {
+  display: none;
+  min-height: 675px;
+  padding: 22px;
+}
+
+.slide.active {
+  display: block;
+}
+
+.slide-card {
+  min-height: 630px;
+  border-radius: 20px;
+  padding: 24px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  animation: fade 260ms ease-out;
+}
+
+.slide-title {
+  font-family: var(--font-heading);
+  font-size: 46px;
+  margin: 0 0 10px;
+  color: var(--accent);
+}
+
+.slide-body {
+  font-size: 16px;
+}
+
+.hero-range {
+  font-size: 22px;
+  letter-spacing: 2px;
+  opacity: 0.8;
+}
+
+.hero-name {
+  font-family: var(--font-heading);
+  font-size: 56px;
+  margin-top: 20px;
+}
+
+.hero-subtitle {
+  margin-top: 16px;
+  color: var(--muted);
+}
+
+.stat-grid {
+  display: grid;
+  gap: 18px;
+}
+
+.stat-grid .big {
+  display: block;
+  font-size: 48px;
+  font-weight: 700;
+  color: var(--secondary);
+}
+
+.list-row {
+  display: grid;
+  gap: 4px;
+  padding: 14px 0;
+  border-bottom: 1px dashed rgba(0, 0, 0, 0.15);
+}
+
+.word-hero {
+  font-family: var(--font-heading);
+  font-size: 76px;
+  display: grid;
+}
+
+.word-hero small {
+  font-family: var(--font-body);
+  font-size: 18px;
+  color: var(--muted);
+}
+
+.word-list {
+  margin-top: 10px;
+}
+
+.word-list div {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 10px 0;
+}
+
+.centered-big {
+  font-size: 64px;
+  font-weight: 700;
+  text-align: center;
+  color: var(--secondary);
+}
+
+.lang-bars {
+  display: grid;
+  gap: 12px;
+}
+
+.lang-bars label {
+  display: flex;
+  justify-content: space-between;
+}
+
+.lang-bars progress {
+  width: 100%;
+  height: 12px;
+}
+
+.day-list {
+  display: grid;
+  gap: 10px;
+}
+
+.day-list div,
+.season-grid div {
+  display: flex;
+  justify-content: space-between;
+  background: rgba(255, 255, 255, 0.65);
+  padding: 10px;
+  border-radius: 10px;
+}
+
+.season-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.muted-note {
+  color: var(--muted);
+}
+
+.restart-btn {
+  margin-top: 18px;
+  border: none;
+  background: var(--accent);
+  color: white;
+  border-radius: 20px;
+  padding: 10px 16px;
+  cursor: pointer;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: white;
+  padding: 12px;
+  font-size: 14px;
+}
+
+.nav button {
+  border: none;
+  border-radius: 10px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.tweak-panel {
+  background: white;
+  border-radius: 14px;
+  padding: 16px;
+  display: grid;
+  gap: 10px;
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.16);
+}
+
+.tweak-panel h3 {
+  margin: 0;
+}
+
+.tweak-panel label {
+  display: grid;
+  gap: 5px;
+  font-size: 12px;
+}
+
+.tweak-panel input,
+.tweak-panel select {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #d9d9d9;
+  border-radius: 8px;
+}
+
+.custom-colors {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (max-width: 960px) {
+  .viewer-shell {
+    grid-template-columns: 1fr;
+  }
+  .phone {
+    min-height: 640px;
+  }
+  .slide-stack,
+  .slide {
+    min-height: 560px;
+  }
+  .slide-card {
+    min-height: 520px;
+  }
+}

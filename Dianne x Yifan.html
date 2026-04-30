@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<title>Dianne × Yifan — Our Story</title>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600;700&family=Space+Grotesk:wght@300;400;600;700&display=swap" rel="stylesheet"/>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/matter-js@0.19.0/build/matter.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+body{
+  background:#F5EDD8;min-height:100vh;margin:0;overflow:hidden;
+}
+.phone-outer{width:100vw;height:100vh;display:flex;align-items:center;justify-content:center;}
+.phone{
+  width:100vw;height:100vh;
+  overflow:hidden;position:relative;user-select:none;cursor:pointer;
+}
+.di{display:none;}
+.slides{width:100%;height:100%;position:relative;overflow:hidden;}
+.slide{position:absolute;inset:0;transition:transform 0.58s cubic-bezier(0.77,0,0.175,1);will-change:transform;}
+.dots{position:absolute;bottom:22px;left:50%;transform:translateX(-50%);display:flex;gap:5px;z-index:500;pointer-events:none;}
+.dot{height:5px;border-radius:3px;background:rgba(255,255,255,0.28);transition:all 0.35s;}
+.dot.on{background:white;}
+@keyframes floatUp{from{transform:translateY(22px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes bloom{0%{transform:scale(0) rotate(-15deg);opacity:0}65%{transform:scale(1.1) rotate(3deg)}100%{transform:scale(1) rotate(0deg);opacity:1}}
+@keyframes slideUp{from{transform:translateY(28px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes twinkle{0%,100%{opacity:0.45}50%{opacity:1}}
+@keyframes countIn{from{transform:translateY(36px) scale(0.85);opacity:0}to{transform:translateY(0) scale(1);opacity:1}}
+@keyframes popIn{0%{transform:scale(0);opacity:0}70%{transform:scale(1.07)}100%{transform:scale(1);opacity:1}}
+</style>
+<template id="__bundler_thumbnail" data-bg-color="#14102A">
+  <svg viewBox="0 0 390 844" xmlns="http://www.w3.org/2000/svg">
+    <rect width="390" height="844" fill="#14102A"/>
+    <rect x="60" y="340" width="270" height="6" rx="3" fill="#6BA3D6" opacity="0.5"/>
+    <text x="195" y="420" font-family="serif" font-size="72" fill="#F2C84B" text-anchor="middle" opacity="0.9">♡</text>
+    <text x="195" y="490" font-family="sans-serif" font-size="28" fill="white" text-anchor="middle" opacity="0.7">REPORT</text>
+    <text x="195" y="522" font-family="sans-serif" font-size="16" fill="#E8748A" text-anchor="middle" opacity="0.6">Dianne × Yifan</text>
+  </svg>
+</template>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "daysCount": "500",
+  "accentColor": "#E8748A",
+  "coverTitle": "REPORT"
+}/*EDITMODE-END*/;
+
+const C = {
+  sky:'#6BA3D6', pink:'#E8748A', cream:'#F5EDD8', dark:'#2A2035',
+  olive:'#5B8C5A', yellow:'#F2C84B', orange:'#E07B54',
+  lightBlue:'#B8D4EC', navy:'#1A2744', blush:'#FACDD4',
+};
+
+const STARS=[
+  {x:42,y:58,r:1.5,d:0.3},{x:118,y:32,r:2,d:0.7},{x:198,y:52,r:1,d:0.5},
+  {x:278,y:28,r:2.5,d:0.2},{x:342,y:68,r:1.5,d:0.9},{x:78,y:98,r:1,d:0.4},
+  {x:158,y:82,r:2,d:0.6},{x:238,y:88,r:1.5,d:0.8},{x:308,y:108,r:1,d:0.3},
+  {x:368,y:42,r:2,d:0.6},{x:22,y:138,r:1.5,d:0.1},{x:92,y:148,r:2,d:0.8},
+  {x:172,y:128,r:1,d:0.5},{x:252,y:142,r:2.5,d:0.3},{x:328,y:152,r:1,d:0.7},
+  {x:48,y:188,r:2,d:0.4},{x:138,y:198,r:1.5,d:0.2},{x:218,y:178,r:1,d:0.9},
+  {x:298,y:198,r:2,d:0.5},{x:362,y:168,r:1.5,d:0.6},
+];
+
+function useShown(active){
+  const [s,setS]=useState(false);
+  useEffect(()=>{
+    if(active){const t=setTimeout(()=>setS(true),60);return()=>clearTimeout(t);}
+    else setS(false);
+  },[active]);
+  return s;
+}
+
+function Blossom({x,y,size=1,delay=0,color='#E8748A'}){
+  const w=34*size,h=34*size;
+  return(
+    <div style={{position:'absolute',left:x,top:y,pointerEvents:'none',animation:`bloom 0.65s ${delay}s both`}}>
+      <svg width={w} height={h} viewBox="0 0 34 34">
+        {[0,72,144,216,288].map((a,i)=>{
+          const rad=(a-90)*Math.PI/180;
+          const cx=17+8*Math.cos(rad),cy=17+8*Math.sin(rad);
+          return <ellipse key={i} cx={cx} cy={cy} rx={5.5} ry={3.5} fill={color} transform={`rotate(${a-90},${cx},${cy})`}/>;
+        })}
+        <circle cx={17} cy={17} r={3.2} fill="#FFF0B0"/>
+      </svg>
+    </div>
+  );
+}
+
+function Cloud({x,y,s=1}){
+  return(
+    <div style={{position:'absolute',left:x,top:y,pointerEvents:'none'}}>
+      <svg width={100*s} height={52*s} viewBox="0 0 100 52">
+        <ellipse cx={50} cy={36} rx={40} ry={20} fill="white" opacity={0.86}/>
+        <ellipse cx={34} cy={28} rx={26} ry={18} fill="white" opacity={0.86}/>
+        <ellipse cx={68} cy={30} rx={22} ry={16} fill="white" opacity={0.86}/>
+      </svg>
+    </div>
+  );
+}
+
+function wavePts(amp,yBase,phase=0,steps=80){
+  const pts=[];
+  for(let i=0;i<=steps;i++){
+    const x=(i/steps)*370;
+    const y=yBase+amp*Math.sin((i/steps)*Math.PI*4+phase);
+    pts.push(`${x},${y}`);
+  }
+  return pts.join(' ');
+}
+
+// ── SLIDE 1: COVER ──────────────────────────────────────────────────────────
+function SlideCover({active,tweaks={}}){
+  const shown=useShown(active);
+  const blossoms=[
+    {x:'5%',y:'13%',s:0.75,d:0.25,c:'#F2A7BA'},{x:'72%',y:'8%',s:0.6,d:0.35,c:C.pink},
+    {x:'58%',y:'27%',s:0.65,d:0.28,c:'#E85070'},{x:'11%',y:'41%',s:0.82,d:0.18,c:C.pink},
+    {x:'83%',y:'47%',s:0.52,d:0.38,c:'#F2A7BA'},{x:'38%',y:'17%',s:0.48,d:0.42,c:C.pink},
+  ];
+  const bottomBl=[
+    {x:'1%',y:'50%',s:1.55,d:0.42,c:'#F2A7BA'},{x:'13%',y:'36%',s:1.25,d:0.48,c:C.pink},
+    {x:'27%',y:'56%',s:1.75,d:0.4,c:'#E85070'},{x:'43%',y:'32%',s:1.35,d:0.52,c:'#F2A7BA'},
+    {x:'57%',y:'53%',s:1.65,d:0.37,c:C.pink},{x:'73%',y:'36%',s:1.15,d:0.45,c:'#E85070'},
+    {x:'86%',y:'54%',s:1.45,d:0.42,c:'#F2A7BA'},
+  ];
+  return(
+    <div style={{width:'100%',height:'100%',background:'linear-gradient(180deg,#8EC8E8 0%,#6BA3D6 55%,#93BCE2 100%)',position:'relative',overflow:'hidden'}}>
+      {shown&&<><Cloud x={-18} y={68} s={1.3}/><Cloud x={215} y={42} s={0.88}/><Cloud x={292} y={118} s={0.68}/></>}
+      {shown&&blossoms.map((b,i)=><Blossom key={i} x={b.x} y={b.y} size={b.s} delay={b.d} color={b.c}/>)}
+      {shown&&(
+        <div style={{position:'absolute',top:'26%',left:0,right:0,textAlign:'center',animation:'floatUp 0.9s 0.4s both'}}>
+          <div style={{fontFamily:'Caveat',fontSize:26,color:'white',lineHeight:1.65,letterSpacing:3,textShadow:'0 2px 10px rgba(0,0,0,0.18)'}}>
+            2024<br/>to<br/>2026
+          </div>
+        </div>
+      )}
+      <div style={{position:'absolute',bottom:0,left:0,right:0,height:'43%'}}>
+        <div style={{position:'absolute',bottom:0,left:0,right:0,height:'64%',background:'linear-gradient(0deg,#D84E6A 0%,#EC7A90 65%,transparent 100%)'}}/>
+        {shown&&bottomBl.map((b,i)=><Blossom key={i} x={b.x} y={b.y} size={b.s} delay={b.d} color={b.c}/>)}
+      </div>
+      {shown&&(
+        <div style={{position:'absolute',bottom:'7%',left:0,right:0,textAlign:'center',animation:'floatUp 0.85s 0.18s both'}}>
+          <div style={{fontFamily:'Caveat',fontWeight:700,fontSize:64,color:C.dark,lineHeight:0.85,letterSpacing:-1}}>{tweaks.coverTitle||'REPORT'}</div>
+          <div style={{fontFamily:'Caveat',fontSize:29,color:C.dark,marginTop:7}}>Dianne × Yifan.</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── SLIDE 2: OVERVIEW / NUMBERS (new design) ─────────────────────────────────
+function SlideNumbers({active}){
+  const shown=useShown(active);
+  const stats=[
+    {num:'178,869',label:'total messages sent'},
+    {num:'636',   label:'days in a row'},
+    {num:'275',   label:'average messages/day'},
+  ];
+  return(
+    <div style={{width:'100%',height:'100%',background:C.cream,position:'relative',overflow:'hidden',display:'flex',flexDirection:'column',justifyContent:'center',padding:'70px 34px 55px'}}>
+      {/* Clock arc decorations */}
+      <svg style={{position:'absolute',top:-30,left:-30,width:180,height:180,opacity:0.18,pointerEvents:'none'}} viewBox="0 0 180 180">
+        <circle cx={90} cy={90} r={74} fill="none" stroke={C.orange} strokeWidth={8} strokeDasharray="3 6"/>
+        <line x1={90} y1={90} x2={90} y2={26} stroke={C.orange} strokeWidth={10} strokeLinecap="round"/>
+        <line x1={90} y1={90} x2={140} y2={100} stroke={C.orange} strokeWidth={7} strokeLinecap="round"/>
+        <circle cx={90} cy={90} r={8} fill={C.orange}/>
+      </svg>
+      <svg style={{position:'absolute',bottom:-40,right:-40,width:180,height:180,opacity:0.13,pointerEvents:'none',transform:'rotate(135deg)'}} viewBox="0 0 180 180">
+        <circle cx={90} cy={90} r={74} fill="none" stroke={C.olive} strokeWidth={8} strokeDasharray="3 6"/>
+        <line x1={90} y1={90} x2={90} y2={26} stroke={C.olive} strokeWidth={10} strokeLinecap="round"/>
+        <line x1={90} y1={90} x2={128} y2={112} stroke={C.olive} strokeWidth={7} strokeLinecap="round"/>
+        <circle cx={90} cy={90} r={8} fill={C.olive}/>
+      </svg>
+      {shown&&(
+        <div style={{animation:'slideUp 0.6s both',marginBottom:32}}>
+          <div style={{display:'flex',alignItems:'center',gap:10}}>
+            <div style={{fontFamily:'Caveat',fontSize:28,color:C.orange}}>overview...</div>
+            <span style={{fontSize:20}}>🕐</span>
+          </div>
+        </div>
+      )}
+      {stats.map((s,i)=>(
+        <div key={i} style={{marginBottom:i<2?28:0,animation:shown?`countIn 0.7s ${0.18*(i+1)}s both`:'none'}}>
+          <div style={{fontFamily:'Space Grotesk',fontWeight:700,fontSize:58,color:C.dark,lineHeight:1}}>{s.num}</div>
+          <div style={{fontFamily:'Caveat',fontSize:20,color:'#aaa',marginTop:2}}>{s.label}</div>
+        </div>
+      ))}
+      {shown&&(
+        <div style={{marginTop:26,animation:'slideUp 0.6s 0.72s both'}}>
+          <div style={{fontFamily:'Caveat',fontSize:19,color:C.pink}}>649 active days out of 725</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── SLIDE 3: RESPONSE SPEED ──────────────────────────────────────────────────
+function SlideWho({active}){
+  const shown=useShown(active);
+  const people=[
+    {name:'Yifan', color:C.sky, median:'17s', mean:'6.4 min', n:'37,541 replies'},
+    {name:'Dianne',color:C.pink,median:'16s', mean:'6.2 min', n:'37,631 replies'},
+  ];
+  return(
+    <div style={{width:'100%',height:'100%',background:C.cream,position:'relative',overflow:'hidden',display:'flex',flexDirection:'column',justifyContent:'center',padding:'70px 30px 55px'}}>
+      {shown&&(
+        <div style={{animation:'slideUp 0.6s both',marginBottom:36}}>
+          <div style={{fontFamily:'Caveat',fontSize:30,color:C.dark}}>how fast do you reply?</div>
+          <div style={{fontFamily:'Space Grotesk',fontSize:13,color:'#bbb',marginTop:4,letterSpacing:0.5}}>median response time</div>
+        </div>
+      )}
+      {people.map((p,i)=>(
+        <div key={i} style={{marginBottom:22,animation:shown?`countIn 0.7s ${0.2+i*0.18}s both`:'none'}}>
+          <div style={{display:'flex',alignItems:'flex-end',gap:12,marginBottom:10}}>
+            <div style={{width:10,height:10,borderRadius:'50%',background:p.color,flexShrink:0,marginBottom:6}}/>
+            <div style={{fontFamily:'Caveat',fontSize:22,color:'#999'}}>{p.name}</div>
+          </div>
+          <div style={{display:'flex',alignItems:'baseline',gap:14}}>
+            <div style={{fontFamily:'Space Grotesk',fontWeight:700,fontSize:72,color:C.dark,lineHeight:1}}>{p.median}</div>
+            <div style={{fontFamily:'Caveat',fontSize:20,color:'#bbb'}}>median</div>
+          </div>
+          <div style={{display:'flex',gap:24,marginTop:8}}>
+            <div>
+              <div style={{fontFamily:'Space Grotesk',fontWeight:600,fontSize:18,color:'#888'}}>{p.mean}</div>
+              <div style={{fontFamily:'Caveat',fontSize:15,color:'#ccc'}}>mean</div>
+            </div>
+            <div>
+              <div style={{fontFamily:'Space Grotesk',fontWeight:600,fontSize:18,color:'#888'}}>{p.n}</div>
+              <div style={{fontFamily:'Caveat',fontSize:15,color:'#ccc'}}>counted</div>
+            </div>
+          </div>
+          {i===0&&<div style={{height:1,background:'rgba(0,0,0,0.07)',margin:'18px 0 0'}}/>}
+        </div>
+      ))}
+      {shown&&(
+        <div style={{marginTop:22,animation:'slideUp 0.6s 0.72s both'}}>
+          <div style={{fontFamily:'Caveat',fontSize:18,color:'#bbb'}}>almost identical — always there for each other</div>
+        </div>
+      )}
+      <div style={{position:'absolute',bottom:-50,right:-50,width:180,height:180,borderRadius:'50%',background:C.lightBlue,opacity:0.18}}/>
+    </div>
+  );
+}
+
+// ── SLIDE 4: TOP WORDS (宝宝) ────────────────────────────────────────────────
+function SlideBaobao({active}){
+  const shown=useShown(active);
+  const secondary=[
+    {word:'可以',count:'3,309×',note:'sure / ok'},
+    {word:'感觉',count:'2,763×',note:'feels like'},
+    {word:'然后',count:'2,536×',note:'and then'},
+  ];
+  return(
+    <div style={{width:'100%',height:'100%',background:C.cream,position:'relative',overflow:'hidden',display:'flex',flexDirection:'column',justifyContent:'center',padding:'70px 34px 55px'}}>
+      <svg style={{position:'absolute',bottom:0,right:0,width:'55%',height:'55%',opacity:0.12,pointerEvents:'none'}} viewBox="0 0 220 380" preserveAspectRatio="xMaxYMax meet">
+        <rect x={30} y={0} width={28} height={380} rx={14} fill={C.olive}/>
+        <rect x={110} y={60} width={36} height={320} rx={18} fill="#8B7030"/>
+        <rect x={185} y={20} width={24} height={360} rx={12} fill={C.olive}/>
+      </svg>
+      {shown&&<>
+        <div style={{animation:'slideUp 0.6s both',marginBottom:8}}>
+          <div style={{fontFamily:'Caveat',fontSize:22,color:'#aaa'}}>your most-used word</div>
+        </div>
+        <div style={{animation:'bloom 0.85s 0.28s both',marginBottom:4}}>
+          <div style={{fontFamily:'Caveat',fontWeight:700,fontSize:108,color:C.dark,lineHeight:1}}>宝宝</div>
+        </div>
+        <div style={{animation:'slideUp 0.6s 0.52s both',marginBottom:32}}>
+          <div style={{fontFamily:'Space Grotesk',fontWeight:700,fontSize:44,color:C.orange}}>5,893 times</div>
+        </div>
+        <div style={{height:1,background:'rgba(0,0,0,0.08)',marginBottom:24,animation:'fadeIn 0.6s 0.7s both'}}/>
+        <div style={{animation:'slideUp 0.6s 0.75s both'}}>
+          <div style={{fontFamily:'Caveat',fontSize:18,color:'#bbb',marginBottom:14}}>and you also loved saying</div>
+          {secondary.map((w,i)=>(
+            <div key={i} style={{display:'flex',alignItems:'baseline',gap:12,marginBottom:12,animation:`slideUp 0.5s ${0.82+i*0.12}s both`}}>
+              <div style={{fontFamily:'Caveat',fontWeight:700,fontSize:32,color:C.dark,minWidth:56}}>{w.word}</div>
+              <div style={{fontFamily:'Space Grotesk',fontWeight:600,fontSize:15,color:C.orange}}>{w.count}</div>
+              <div style={{fontFamily:'Caveat',fontSize:16,color:'#bbb'}}>{w.note}</div>
+            </div>
+          ))}
+        </div>
+      </>}
+    </div>
+  );
+}
+
+// ── SLIDE 5: NIGHT OWLS ──────────────────────────────────────────────────────
+function SlideNight({active}){
+  const shown=useShown(active);
+  return(
+    <div style={{width:'100%',height:'100%',background:C.navy,position:'relative',overflow:'hidden',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center'}}>
+      <svg style={{position:'absolute',top:0,left:0,width:'100%',height:'60%',pointerEvents:'none'}} viewBox="0 0 390 506">
+        {shown&&STARS.map((s,i)=>(
+          <circle key={i} cx={s.x} cy={s.y} r={s.r} fill="white"
+            style={{animation:`twinkle ${1.6+s.d}s ${s.d}s infinite`,opacity:0.55}}/>
+        ))}
+      </svg>
+      {shown&&(
+        <div style={{position:'absolute',top:'7%',right:'11%',animation:'bloom 0.85s 0.1s both'}}>
+          <svg width={74} height={74} viewBox="0 0 74 74">
+            <circle cx={37} cy={37} r={34} fill="#FFF3AA"/>
+            <circle cx={54} cy={22} r={28} fill={C.navy}/>
+          </svg>
+        </div>
+      )}
+      <div style={{textAlign:'center',padding:'0 34px',zIndex:2}}>
+        {shown&&<>
+          <div style={{fontFamily:'Caveat',fontSize:26,color:'rgba(255,255,255,0.52)',animation:'slideUp 0.6s 0.22s both'}}>night owls</div>
+          <div style={{fontFamily:'Space Grotesk',fontWeight:700,fontSize:76,color:'#FFF3AA',lineHeight:1,marginTop:12,animation:'bloom 0.95s 0.48s both'}}>midnight</div>
+          <div style={{fontFamily:'Caveat',fontSize:28,color:'white',marginTop:5,animation:'slideUp 0.6s 0.68s both'}}>was your busiest hour</div>
+          <div style={{margin:'26px auto 0',animation:'bloom 0.85s 0.88s both'}}>
+            <svg width={112} height={112} viewBox="0 0 112 112">
+              <circle cx={56} cy={56} r={51} fill="none" stroke="rgba(255,255,255,0.14)" strokeWidth={3}/>
+              {[...Array(12)].map((_,i)=>{
+                const a=(i*30-90)*Math.PI/180;
+                const isKey=i===0||i===3||i===6||i===9;
+                return <line key={i} x1={56+45*Math.cos(a)} y1={56+45*Math.sin(a)}
+                  x2={56+51*Math.cos(a)} y2={56+51*Math.sin(a)}
+                  stroke={isKey?'rgba(255,255,255,0.55)':'rgba(255,255,255,0.22)'} strokeWidth={isKey?2.5:1.5}/>;
+              })}
+              <line x1={56} y1={56} x2={56} y2={20} stroke="#FFF3AA" strokeWidth={4} strokeLinecap="round"/>
+              <line x1={56} y1={56} x2={56} y2={13} stroke="white" strokeWidth={2.5} strokeLinecap="round"/>
+              <circle cx={56} cy={56} r={4.5} fill="#FFF3AA"/>
+            </svg>
+          </div>
+          <div style={{fontFamily:'Caveat',fontSize:20,color:'rgba(255,255,255,0.38)',marginTop:16,animation:'slideUp 0.6s 1.08s both'}}>who needs sleep?</div>
+        </>}
+      </div>
+    </div>
+  );
+}
+
+// ── SLIDE 6: LANGUAGE ────────────────────────────────────────────────────────
+function SlideLanguage({active}){
+  const shown=useShown(active);
+  const lines=[
+    {color:C.sky,   amp:22,yBase:65, phase:0,  delay:0.4, sw:22,label:'中文',   pct:'85.1%'},
+    {color:C.orange,amp:14,yBase:168,phase:1.1,delay:0.8, sw:14,label:'English',pct:'14.9%'},
+    {color:C.olive, amp:9, yBase:248,phase:2.2,delay:1.1, sw:9, label:'mixed / other',pct:'4.5%'},
+  ];
+  return(
+    <div style={{width:'100%',height:'100%',background:C.cream,position:'relative',overflow:'hidden'}}>
+      {shown&&(
+        <div style={{position:'absolute',top:'11%',left:32,animation:'slideUp 0.6s both'}}>
+          <div style={{fontFamily:'Caveat',fontSize:31,color:C.dark}}>talking in two languages</div>
+        </div>
+      )}
+      <svg style={{position:'absolute',top:'27%',left:10,width:'calc(100% - 20px)',height:'46%'}} viewBox="0 0 370 300" overflow="visible">
+        <defs>
+          {lines.map((l,i)=>(
+            <clipPath key={i} id={`lc${i}`}>
+              <rect x={0} y={-60} height={360} width={shown?370:0}
+                style={{transition:`width 1.55s ${l.delay}s ease-out`}}/>
+            </clipPath>
+          ))}
+        </defs>
+        {lines.map((l,i)=>(
+          <polyline key={i} points={wavePts(l.amp,l.yBase,l.phase)} fill="none"
+            stroke={l.color} strokeWidth={l.sw} strokeLinecap="round" strokeLinejoin="round"
+            clipPath={`url(#lc${i})`}/>
+        ))}
+      </svg>
+      {shown&&(
+        <div style={{position:'absolute',bottom:'8%',left:32,animation:'slideUp 0.6s 1.5s both'}}>
+          {lines.map((l,i)=>(
+            <div key={i} style={{display:'flex',alignItems:'center',gap:10,marginBottom:11}}>
+              <div style={{width:28,height:11,borderRadius:6,background:l.color}}/>
+              <div style={{fontFamily:'Caveat',fontSize:22,color:C.dark}}>{l.label}</div>
+              <div style={{fontFamily:'Space Grotesk',fontWeight:700,fontSize:16,color:'#aaa'}}>{l.pct}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── SLIDE 7: 4 SEASONS ───────────────────────────────────────────────────────
+function SlideSeasons({active}){
+  const shown=useShown(active);
+  const seasons=[
+    {label:'Spring',pct:'24%',color:C.pink,  amp:18,y:62, phase:0.3,delay:0.28,sw:14},
+    {label:'Summer',pct:'19%',color:C.yellow,amp:22,y:162,phase:1.2,delay:0.52,sw:14},
+    {label:'Fall',  pct:'34%',color:C.orange,amp:16,y:258,phase:2.1,delay:0.76,sw:14},
+    {label:'Winter',pct:'23%',color:C.sky,   amp:28,y:348,phase:0.7,delay:1.0, sw:14},
+  ];
+  return(
+    <div style={{width:'100%',height:'100%',background:'#FFFBF5',position:'relative',overflow:'hidden'}}>
+      {shown&&(
+        <div style={{position:'absolute',top:'9%',left:0,right:0,textAlign:'center',animation:'slideUp 0.6s both'}}>
+          <div style={{fontFamily:'Caveat',fontSize:30,color:C.dark}}>4 seasons of texting</div>
+        </div>
+      )}
+      <svg style={{position:'absolute',top:'20%',left:0,width:'100%',height:'72%'}} viewBox="0 0 390 430" overflow="visible">
+        <defs>
+          {seasons.map((s,i)=>(
+            <clipPath key={i} id={`sc${i}`}>
+              <rect x={0} y={-60} height={520} width={shown?390:0}
+                style={{transition:`width 1.45s ${s.delay}s ease-out`}}/>
+            </clipPath>
+          ))}
+        </defs>
+        {seasons.map((s,i)=>{
+          const pts=[];
+          for(let j=0;j<=60;j++){
+            const x=(j/60)*260;
+            const y=s.y+s.amp*Math.sin((j/60)*Math.PI*4+s.phase);
+            pts.push(`${x},${y}`);
+          }
+          return(
+            <polyline key={i} points={pts.join(' ')} fill="none"
+              stroke={s.color} strokeWidth={s.sw} strokeLinecap="round" strokeLinejoin="round"
+              clipPath={`url(#sc${i})`}/>
+          );
+        })}
+        {shown&&seasons.map((s,i)=>(
+          <g key={i} style={{animation:`slideUp 0.5s ${s.delay+0.9}s both`}}>
+            <text x={278} y={s.y+6}  fontFamily="Caveat" fontSize={20} fill={s.color} dominantBaseline="middle">{s.label}</text>
+            <text x={278} y={s.y+26} fontFamily="Space Grotesk" fontSize={13} fill={s.color} dominantBaseline="middle" fontWeight={700} opacity={0.7}>{s.pct}</text>
+          </g>
+        ))}
+      </svg>
+    </div>
+  );
+}
+
+// ── SLIDE 8: MOST ACTIVE DAYS — physics ball pit ─────────────────────────────
+function SlideChristmas({active}){
+  const shown=useShown(active);
+  const canvasRef=useRef(null);
+  const cleanupRef=useRef(null);
+
+  const W=window.innerWidth, H=window.innerHeight;
+  const DAYS=[
+    {date:'Dec 24',sub:'1,212 msgs',color:'#6B8E5A',r:109},
+    {date:'Feb 4', sub:'973 msgs',  color:'#7AAFB0',r:90},
+    {date:'Dec 28',sub:'917 msgs',  color:'#5A7896',r:84},
+    {date:'Jan 29',sub:'880 msgs',  color:'#D4A030',r:80},
+    {date:'Aug 2', sub:'878 msgs',  color:'#E07878',r:76},
+  ];
+
+  useEffect(()=>{
+    if(!active||!canvasRef.current) return;
+    if(typeof Matter==='undefined') return;
+
+    const {Engine,Render,Runner,Bodies,Body,World,Mouse,MouseConstraint,Events}=Matter;
+    const engine=Engine.create({gravity:{y:1.4}});
+    const render=Render.create({
+      canvas:canvasRef.current,
+      engine,
+      options:{width:W,height:H,wireframes:false,background:'#B8D0CC'},
+    });
+
+    // walls: floor, left, right, ceiling (off-screen so balls fall in)
+    const walls=[
+      Bodies.rectangle(W/2,H+20,W+40,40,{isStatic:true,render:{fillStyle:'#B8D0CC'}}),
+      Bodies.rectangle(-20,H/2,40,H+40,{isStatic:true,render:{fillStyle:'#B8D0CC'}}),
+      Bodies.rectangle(W+20,H/2,40,H+40,{isStatic:true,render:{fillStyle:'#B8D0CC'}}),
+    ];
+    World.add(engine.world,walls);
+
+    // drop balls from above with slight spread
+    const balls=DAYS.map((d,i)=>{
+      const x=70+i*62+(Math.random()-0.5)*18;
+      const y=-d.r*2 - i*160;
+      const b=Bodies.circle(x,y,d.r,{
+        restitution:0.45,friction:0.08,frictionAir:0.015,
+        render:{fillStyle:d.color},
+      });
+      b.dayData=d;
+      return b;
+    });
+    World.add(engine.world,balls);
+
+    // mouse drag
+    const mouse=Mouse.create(canvasRef.current);
+    const mc=MouseConstraint.create(engine,{
+      mouse,constraint:{stiffness:0.22,render:{visible:false}},
+    });
+    World.add(engine.world,mc);
+    render.mouse=mouse;
+
+    // draw text labels on balls
+    Events.on(render,'afterRender',()=>{
+      const ctx=render.context;
+      balls.forEach(b=>{
+        const {x,y}=b.position;
+        const d=b.dayData;
+        ctx.save();
+        ctx.translate(x,y);
+        ctx.rotate(b.angle);
+        ctx.textAlign='center';
+        ctx.textBaseline='middle';
+        ctx.fillStyle='rgba(255,255,255,0.95)';
+        ctx.font=`700 ${Math.round(d.r*0.34)}px 'Caveat',cursive`;
+        ctx.fillText(d.date,0,-d.r*0.18);
+        ctx.fillStyle='rgba(255,255,255,0.65)';
+        ctx.font=`${Math.round(d.r*0.24)}px 'Space Grotesk',sans-serif`;
+        ctx.fillText(d.sub,0,d.r*0.28);
+        ctx.restore();
+      });
+    });
+
+    Render.run(render);
+    const runner=Runner.create();
+    Runner.run(runner,engine);
+
+    cleanupRef.current=()=>{
+      Render.stop(render);
+      Runner.stop(runner);
+      World.clear(engine.world,false);
+      Engine.clear(engine);
+    };
+    return()=>{ cleanupRef.current&&cleanupRef.current(); };
+  },[active]);
+
+  return(
+    <div style={{width:'100%',height:'100%',background:'#B8D0CC',position:'relative',overflow:'hidden'}}>
+      <canvas ref={canvasRef} width={W} height={H} style={{position:'absolute',top:0,left:0,width:'100%',height:'100%'}}/>
+      {shown&&(
+        <div style={{position:'absolute',top:56,left:32,pointerEvents:'none',animation:'slideUp 0.5s both'}}>
+          <div style={{fontFamily:'Caveat',fontSize:30,color:'#2A2035'}}>most active days</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── SLIDE 9: CALLS (new dark green design) ───────────────────────────────────
+function SlideCalls({active}){
+  const shown=useShown(active);
+  return(
+    <div style={{width:'100%',height:'100%',background:'#4F6338',position:'relative',overflow:'hidden',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center'}}>
+      {/* vine decorations */}
+      <svg style={{position:'absolute',top:0,right:0,width:130,height:160,opacity:0.4,pointerEvents:'none'}} viewBox="0 0 130 160">
+        <path d="M120,10 Q100,30 90,50 Q80,70 95,85 Q110,100 95,115 Q80,130 90,150" fill="none" stroke="#A8C870" strokeWidth={6} strokeLinecap="round"/>
+        <path d="M105,10 Q88,35 80,55" fill="none" stroke="#A8C870" strokeWidth={4} strokeLinecap="round"/>
+        {[[90,50],[95,85],[90,150]].map(([x,y],i)=>(
+          <ellipse key={i} cx={x} cy={y} rx={6} ry={4} fill="#8AB060" opacity={0.7} transform={`rotate(${i*30},${x},${y})`}/>
+        ))}
+      </svg>
+      <svg style={{position:'absolute',bottom:0,left:0,width:130,height:160,opacity:0.4,pointerEvents:'none',transform:'rotate(180deg)'}} viewBox="0 0 130 160">
+        <path d="M120,10 Q100,30 90,50 Q80,70 95,85 Q110,100 95,115 Q80,130 90,150" fill="none" stroke="#A8C870" strokeWidth={6} strokeLinecap="round"/>
+        {[[90,50],[95,85]].map(([x,y],i)=>(
+          <ellipse key={i} cx={x} cy={y} rx={6} ry={4} fill="#8AB060" opacity={0.7}/>
+        ))}
+      </svg>
+      {shown&&(
+        <div style={{animation:'bloom 0.7s both',marginBottom:20}}>
+          <svg width={72} height={72} viewBox="0 0 72 72">
+            <path d="M16,52 Q12,44 14,34 Q16,24 24,18 Q32,12 36,16 Q40,20 36,28 Q32,32 30,34 Q38,46 44,50 Q46,48 50,44 Q54,40 58,42 Q64,48 60,56 Q56,64 46,64 Q36,64 28,60 Q20,56 16,52 Z"
+              fill="none" stroke="rgba(255,255,255,0.75)" strokeWidth={4} strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </div>
+      )}
+      {shown&&(
+        <div style={{textAlign:'center',zIndex:2,padding:'0 34px'}}>
+          <div style={{fontFamily:'Caveat',fontSize:22,color:'rgba(255,255,255,0.55)',marginBottom:8,animation:'slideUp 0.6s 0.22s both'}}>time spent on the phone</div>
+          <div style={{fontFamily:'Space Grotesk',fontWeight:700,fontSize:72,color:'white',lineHeight:1,letterSpacing:-1,animation:'bloom 0.9s 0.42s both'}}>131h 56m</div>
+          <div style={{fontFamily:'Caveat',fontSize:20,color:'rgba(255,255,255,0.55)',marginTop:8,animation:'slideUp 0.6s 0.62s both'}}>across 747 calls</div>
+          <div style={{marginTop:32,animation:'slideUp 0.6s 0.8s both'}}>
+            {[{label:'Longest',val:'2h 17m'},{label:'Average',val:'17m 46s'}].map((item,i)=>(
+              <div key={i} style={{display:'flex',alignItems:'center',gap:12,marginBottom:12,justifyContent:'center'}}>
+                <div style={{fontFamily:'Caveat',fontSize:20,color:'rgba(255,255,255,0.5)',minWidth:70,textAlign:'right'}}>{item.label} :</div>
+                <svg width={60} height={16} viewBox="0 0 60 16">
+                  <path d="M2,8 Q10,2 18,8 Q26,14 34,8 Q42,2 50,8 Q56,12 60,8" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth={2.5} strokeLinecap="round"/>
+                </svg>
+                <div style={{fontFamily:'Space Grotesk',fontWeight:600,fontSize:18,color:'white'}}>{item.val}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── SLIDE 10: FOREVER ────────────────────────────────────────────────────────
+function SlideForever({active,onReplay,tweaks={}}){
+  const shown=useShown(active);
+  const bls=[
+    {x:'2%',y:'4%',s:1.05,d:0.1,c:C.pink},{x:'70%',y:'2%',s:0.82,d:0.22,c:'#E85070'},
+    {x:'83%',y:'14%',s:0.62,d:0.16,c:C.pink},{x:'9%',y:'19%',s:0.72,d:0.28,c:'#F2A7BA'},
+    {x:'60%',y:'20%',s:0.52,d:0.32,c:C.pink},{x:'4%',y:'68%',s:0.95,d:0.38,c:'#F2A7BA'},
+    {x:'76%',y:'70%',s:0.72,d:0.2,c:C.pink},{x:'86%',y:'52%',s:0.58,d:0.42,c:'#E85070'},
+    {x:'18%',y:'78%',s:0.68,d:0.3,c:C.pink},{x:'44%',y:'83%',s:0.85,d:0.12,c:'#F2A7BA'},
+  ];
+  return(
+    <div style={{width:'100%',height:'100%',background:C.blush,position:'relative',overflow:'hidden',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center'}}>
+      {shown&&bls.map((b,i)=><Blossom key={i} x={b.x} y={b.y} size={b.s} delay={b.d} color={b.c}/>)}
+      <svg style={{position:'absolute',bottom:0,left:0,width:'44%',height:'50%',opacity:0.5}} viewBox="0 0 180 440">
+        <path d="M32 440 Q42 340 52 240 Q62 195 84 145 M52 240 Q32 215 12 196 M60 295 Q40 278 20 265 M68 345 Q50 336 35 324" stroke={C.sky} strokeWidth={11} fill="none" strokeLinecap="round"/>
+      </svg>
+      <svg style={{position:'absolute',bottom:0,right:0,width:'44%',height:'50%',opacity:0.5,transform:'scaleX(-1)'}} viewBox="0 0 180 440">
+        <path d="M32 440 Q42 340 52 240 Q62 195 84 145 M52 240 Q32 215 12 196 M60 295 Q40 278 20 265 M68 345 Q50 336 35 324" stroke={C.sky} strokeWidth={11} fill="none" strokeLinecap="round"/>
+      </svg>
+      <div style={{textAlign:'center',padding:'0 38px',zIndex:2}}>
+        {shown&&<>
+          <div style={{fontFamily:'Caveat',fontSize:22,color:'rgba(42,32,53,0.5)',animation:'slideUp 0.6s 0.18s both'}}>{tweaks.daysCount||'500'} days and counting</div>
+          <div style={{fontFamily:'Caveat',fontWeight:700,fontSize:62,color:C.dark,marginTop:16,lineHeight:1.15,animation:'bloom 0.95s 0.42s both'}}>
+            Dianne<br/>× Yifan
+          </div>
+          <div style={{fontFamily:'Space Grotesk',fontSize:13,color:'rgba(42,32,53,0.38)',marginTop:18,letterSpacing:2,textTransform:'uppercase',animation:'slideUp 0.6s 0.72s both'}}>
+            2024 — present
+          </div>
+          <button onClick={(e)=>{e.stopPropagation();onReplay&&onReplay();}} style={{
+            marginTop:40,display:'inline-flex',alignItems:'center',gap:10,
+            background:'none',border:`1.5px solid ${C.dark}`,borderRadius:30,
+            padding:'11px 24px',cursor:'pointer',animation:'slideUp 0.6s 1.0s both',
+          }}>
+            <svg width={16} height={16} viewBox="0 0 16 16" fill="none">
+              <path d="M2 8A6 6 0 1 0 8 2" stroke={C.dark} strokeWidth={1.8} strokeLinecap="round"/>
+              <path d="M8 0 L8 4 L5 2 Z" fill={C.dark}/>
+            </svg>
+            <span style={{fontFamily:'Caveat',fontSize:20,color:C.dark}}>watch again</span>
+          </button>
+        </>}
+      </div>
+    </div>
+  );
+}
+
+// ── APP ──────────────────────────────────────────────────────────────────────
+const SLIDES=[SlideCover,SlideNumbers,SlideWho,SlideBaobao,SlideNight,SlideLanguage,SlideSeasons,SlideChristmas,SlideCalls,SlideForever];
+const N=SLIDES.length;
+
+function App(){
+  const [cur,setCur]=useState(()=>{
+    try{const s=localStorage.getItem('dxyCur');return s?Math.min(parseInt(s),N-1):0;}catch{return 0;}
+  });
+  const [tweaks,setTweaks]=useState(TWEAK_DEFAULTS);
+  const [tweaksVisible,setTweaksVisible]=useState(false);
+  const touchX=useRef(null);
+
+  useEffect(()=>{
+    const handler=(e)=>{
+      if(e.data?.type==='__activate_edit_mode') setTweaksVisible(true);
+      if(e.data?.type==='__deactivate_edit_mode') setTweaksVisible(false);
+    };
+    window.addEventListener('message',handler);
+    window.parent.postMessage({type:'__edit_mode_available'},'*');
+    return()=>window.removeEventListener('message',handler);
+  },[]);
+
+  const go=(n)=>{
+    const next=Math.max(0,Math.min(N-1,n));
+    setCur(next);
+    try{localStorage.setItem('dxyCur',next);}catch{}
+  };
+  const onTouchStart=(e)=>{touchX.current=e.touches[0].clientX;};
+  const onTouchEnd=(e)=>{
+    if(touchX.current===null)return;
+    const dx=e.changedTouches[0].clientX-touchX.current;
+    if(Math.abs(dx)>38)go(cur+(dx<0?1:-1));
+    touchX.current=null;
+  };
+  const onClick=(e)=>{
+    const r=e.currentTarget.getBoundingClientRect();
+    const x=e.clientX-r.left;
+    if(x<r.width*0.32)go(cur-1);
+    else if(x>r.width*0.68)go(cur+1);
+  };
+
+  useEffect(()=>{
+    // no scaling needed — fills viewport
+  },[]);
+
+  return(
+    <>
+      <div className="phone-outer">
+        <div className="phone" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} onClick={onClick}>
+          <div className="di"/>
+          <div className="slides">
+            {SLIDES.map((Slide,i)=>(
+              <div key={i} className="slide" style={{transform:`translateX(${(i-cur)*100}%)`}}>
+                <Slide active={i===cur} onReplay={()=>go(0)} tweaks={tweaks}/>
+              </div>
+            ))}
+          </div>
+          <div className="dots">
+            {SLIDES.map((_,i)=>(
+              <div key={i} className={`dot${i===cur?' on':''}`} style={{width:i===cur?18:5}}/>
+            ))}
+          </div>
+        </div>
+      </div>
+      {tweaksVisible&&(
+        <div style={{position:'fixed',bottom:24,right:24,zIndex:9999,background:'white',borderRadius:16,boxShadow:'0 8px 40px rgba(0,0,0,0.18)',padding:'18px 20px',width:220,fontFamily:'Space Grotesk'}}>
+          <div style={{fontWeight:700,fontSize:13,marginBottom:14,letterSpacing:0.5,color:'#222'}}>Tweaks</div>
+          <label style={{display:'block',fontSize:11,color:'#999',marginBottom:4}}>Days count</label>
+          <input type="text" value={tweaks.daysCount} onChange={e=>{
+            const next={...tweaks,daysCount:e.target.value};
+            setTweaks(next);
+            window.parent.postMessage({type:'__edit_mode_set_keys',edits:next},'*');
+          }} style={{width:'100%',border:'1.5px solid #eee',borderRadius:8,padding:'6px 10px',fontSize:14,marginBottom:12,outline:'none'}}/>
+          <label style={{display:'block',fontSize:11,color:'#999',marginBottom:4}}>Cover title</label>
+          <input type="text" value={tweaks.coverTitle} onChange={e=>{
+            const next={...tweaks,coverTitle:e.target.value};
+            setTweaks(next);
+            window.parent.postMessage({type:'__edit_mode_set_keys',edits:next},'*');
+          }} style={{width:'100%',border:'1.5px solid #eee',borderRadius:8,padding:'6px 10px',fontSize:14,marginBottom:12,outline:'none'}}/>
+        </div>
+      )}
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
