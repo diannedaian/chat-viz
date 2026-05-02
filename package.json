@@ -1,0 +1,8 @@
+{
+  "name": "chat-viz",
+  "private": true,
+  "description": "Static HTML/CSS/JS site (no bundler). build copies nothing — output is the repo root.",
+  "scripts": {
+    "build": "node -e \"require('fs').accessSync('index.html'); console.log('Static root OK');\""
+  }
+}

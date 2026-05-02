@@ -1,6 +1,9 @@
 # macOS / editor noise
 .DS_Store
 
+# Node (minimal package.json for Vercel only)
+node_modules/
+
 # Python local environment
 .venv/
 __pycache__/
