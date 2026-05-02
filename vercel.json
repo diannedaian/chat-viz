@@ -1,29 +1,3 @@
 {
-  "cleanUrls": true,
-  "rewrites": [
-    {
-      "source": "/",
-      "destination": "/apps/web/index.html"
-    },
-    {
-      "source": "/index.html",
-      "destination": "/apps/web/index.html"
-    },
-    {
-      "source": "/viewer",
-      "destination": "/apps/web/viewer.html"
-    },
-    {
-      "source": "/viewer.html",
-      "destination": "/apps/web/viewer.html"
-    },
-    {
-      "source": "/parser",
-      "destination": "/apps/web/parser.html"
-    },
-    {
-      "source": "/parser.html",
-      "destination": "/apps/web/parser.html"
-    }
-  ]
+  "cleanUrls": true
 }

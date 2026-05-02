@@ -1,15 +1,31 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Chat Viz Parser</title>
-    <meta http-equiv="refresh" content="0; url=/apps/web/parser.html" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WhatsApp Parser</title>
+    <link rel="stylesheet" href="./src/parser/styles.css" />
   </head>
   <body>
-    <script>
-      window.location.replace("/apps/web/parser.html" + window.location.search + window.location.hash);
-    </script>
-    <p><a href="/apps/web/parser.html">Open parser</a></p>
+    <main>
+      <h1>Parser Tool</h1>
+      <p>
+        Upload a WhatsApp-exported <code>.txt</code> file and export a ready-to-import
+        <code>my-chat-data.json</code>.
+      </p>
+      <section class="controls">
+        <input id="chatUpload" type="file" accept=".txt,text/plain" />
+        <button id="runParser">Parse</button>
+        <button id="downloadJson" disabled>Download JSON</button>
+        <button id="openViewer" disabled>Open in Viewer</button>
+      </section>
+      <section class="panel">
+        <h3>Parsed Summary</h3>
+        <div id="parserStats">No dataset parsed yet.</div>
+      </section>
+      <div id="parserErrors" class="errors"></div>
+      <p><a href="./index.html">Back to landing</a></p>
+    </main>
+    <script type="module" src="./src/parser/app.js"></script>
   </body>
 </html>

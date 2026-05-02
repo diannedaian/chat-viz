@@ -1,15 +1,445 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Chat Viz Viewer</title>
-    <meta http-equiv="refresh" content="0; url=/apps/web/viewer.html" />
-  </head>
-  <body>
-    <script>
-      window.location.replace("/apps/web/viewer.html" + window.location.search + window.location.hash);
-    </script>
-    <p><a href="/apps/web/viewer.html">Open viewer</a></p>
-  </body>
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<title>Chat Viz Viewer</title>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600;700&family=Space+Grotesk:wght@300;400;600;700&display=swap" rel="stylesheet"/>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/matter-js@0.19.0/build/matter.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+body{
+  background:#14102A;min-height:100vh;margin:0;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;
+  background-image:radial-gradient(ellipse at 30% 40%,#2A1B3D 0%,#14102A 70%);
+}
+.viewer-tools{position:fixed;top:10px;left:10px;z-index:9999;background:rgba(255,255,255,0.94);padding:8px 10px;border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,0.14);display:flex;align-items:center;gap:8px;font-family:'Space Grotesk',sans-serif;font-size:12px}
+.viewer-tools .action-btn{appearance:none;border:none;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer;font-family:'Space Grotesk',sans-serif}
+.viewer-tools .back-btn{background:#4f46e5;color:#fff;text-decoration:none;display:inline-flex;align-items:center}
+.viewer-tools .download-btn{background:#111827;color:#fff}
+.viewer-tools .err{color:#B42318;max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.phone-outer{display:flex;align-items:center;justify-content:center;transform-origin:center center;}
+.phone{
+  width:390px;height:844px;border-radius:52px;border:3px solid #2E2550;
+  box-shadow:inset 0 0 0 2px #14102A,0 0 0 5px #231D40,0 40px 100px rgba(0,0,0,0.65),0 0 80px rgba(107,163,214,0.12);
+  overflow:hidden;position:relative;user-select:none;cursor:pointer;
+}
+.di{position:absolute;top:14px;left:50%;transform:translateX(-50%);width:126px;height:37px;background:#000;border-radius:20px;z-index:1000;}
+.slides{width:100%;height:100%;position:relative;overflow:hidden;}
+.slide{position:absolute;inset:0;transition:transform 0.58s cubic-bezier(0.77,0,0.175,1);will-change:transform;}
+.dots{position:absolute;bottom:22px;left:50%;transform:translateX(-50%);display:flex;gap:5px;z-index:500;pointer-events:none;}
+.dot{height:5px;border-radius:3px;background:rgba(255,255,255,0.28);transition:all 0.35s;}
+.dot.on{background:white;}
+@keyframes floatUp{from{transform:translateY(22px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes bloom{0%{transform:scale(0) rotate(-15deg);opacity:0}65%{transform:scale(1.1) rotate(3deg)}100%{transform:scale(1) rotate(0deg);opacity:1}}
+@keyframes slideUp{from{transform:translateY(28px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes twinkle{0%,100%{opacity:0.45}50%{opacity:1}}
+@keyframes countIn{from{transform:translateY(36px) scale(0.85);opacity:0}to{transform:translateY(0) scale(1);opacity:1}}
+</style>
+</head>
+<body>
+<div class="viewer-tools">
+  <a href="./index.html" class="action-btn back-btn">Back to landing</a>
+  <button id="downloadStandaloneBtn" class="action-btn download-btn">Download standalone HTML</button>
+  <span id="viewerError" class="err"></span>
+</div>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef, useMemo } = React;
+
+const STORAGE_DATA = "chatviz:data";
+const STORAGE_TWEAKS = "chatviz:tweaks";
+const STORAGE_SLIDE = "chatviz:slideIndex";
+
+const TWEAK_DEFAULTS = {
+  daysCount: "",
+  accentColor: "#E8748A",
+  coverTitle: "REPORT",
+  relationshipType: "romantic",
+  themePreset: "blossom",
+  startDate: "",
+  endDate: "",
+  person1Name: "",
+  person2Name: ""
+};
+
+const REL_COPY = {
+  romantic: { subtitle: "A love story in messages", endingTitle: "Forever", endingTagline: "days and counting", icon: "♡" },
+  friendship: { subtitle: "A friendship story in messages", endingTitle: "Life Long Friendship", endingTagline: "days strong", icon: "✦" },
+  family: { subtitle: "A family story in messages", endingTitle: "Family Love", endingTagline: "days together", icon: "❀" }
+};
+
+const THEME_PRESETS = {
+  blossom: {
+    sky:'#6BA3D6', pink:'#E8748A', cream:'#F5EDD8', dark:'#2A2035',
+    olive:'#5B8C5A', yellow:'#F2C84B', orange:'#E07B54',
+    lightBlue:'#B8D4EC', navy:'#1A2744', blush:'#FACDD4',
+    muted:'#a39ea2', mutedSoft:'#bdb8bc'
+  },
+  midnight: {
+    sky:'#9DBBE8', pink:'#FF9CB8', cream:'#2B2440', dark:'#F2ECFF',
+    olive:'#A6D49C', yellow:'#FFE49A', orange:'#F2B488',
+    lightBlue:'#7C8FB8', navy:'#1F1A35', blush:'#3A2E54',
+    muted:'#A8A2C0', mutedSoft:'#7E7896'
+  },
+  forest: {
+    sky:'#6A9F9B', pink:'#C77289', cream:'#EDF2E7', dark:'#243023',
+    olive:'#4D7B4A', yellow:'#D8B85A', orange:'#C97A55',
+    lightBlue:'#B9D6CB', navy:'#27413F', blush:'#E7DCD1',
+    muted:'#7A857A', mutedSoft:'#A2ADA1'
+  }
+};
+
+let C = { ...THEME_PRESETS.blossom };
+
+const DEFAULT_DATA = {
+  meta: { title: "Dianne x Yifan" },
+  people: [{ name: "Dianne" }, { name: "Yifan" }],
+  metrics: {
+    totalMessages: 178869, longestStreakDays: 636, avgMessagesPerDay: 275, activeDays: 649, totalDays: 725,
+    replyStats: [{ name: "Yifan", medianSec: 17, meanSec: 384, count: 37541 }, { name: "Dianne", medianSec: 16, meanSec: 372, count: 37631 }],
+    topWords: [{ word: "宝宝", count: 5893 }, { word: "可以", count: 3309 }, { word: "感觉", count: 2763 }, { word: "然后", count: 2536 }],
+    languageShare: { zh: 85.1, en: 14.9, mixed: 4.5 },
+    busiestHour: { hour: 0, count: 11293 },
+    topDays: [{ date: "2025-12-24", count: 1212 }, { date: "2026-02-04", count: 973 }, { date: "2025-12-28", count: 917 }, { date: "2026-01-29", count: 880 }, { date: "2025-08-02", count: 878 }],
+    calls: { totalSeconds: 474960, count: 747, longestSeconds: 8220, averageSeconds: 1066 }
+  },
+  slides: { cover: { title: "REPORT", startYear: 2024, endYear: 2026 } },
+  customization: { relationshipType: "romantic", themePreset: "blossom", startDate: "2024-04-03", endDate: "2026-04-01" }
+};
+
+const STARS=[
+  {x:42,y:58,r:1.5,d:0.3},{x:118,y:32,r:2,d:0.7},{x:198,y:52,r:1,d:0.5},{x:278,y:28,r:2.5,d:0.2},{x:342,y:68,r:1.5,d:0.9},
+  {x:78,y:98,r:1,d:0.4},{x:158,y:82,r:2,d:0.6},{x:238,y:88,r:1.5,d:0.8},{x:308,y:108,r:1,d:0.3},{x:368,y:42,r:2,d:0.6}
+];
+
+function comma(n){return Number(n||0).toLocaleString();}
+function shortDate(iso){ if(!iso) return ""; const d=new Date(iso+"T00:00:00"); return d.toLocaleDateString(undefined,{month:"short",day:"numeric"});}
+function fmtDuration(sec){ const s=Math.max(0,Math.round(sec||0)); const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),ss=s%60; if(h) return `${h}h ${m}m`; if(m) return `${m}m ${ss}s`; return `${ss}s`; }
+function fmtMean(sec){ return `${(Number(sec||0)/60).toFixed(1)} min`; }
+function pct(v){ return `${Number(v||0).toFixed(1)}%`; }
+function hourLabel(h){ const hh=(h%12)||12; return `${hh}${h>=12?"pm":"am"}`; }
+function calcDays(start,end){ if(!start||!end) return ""; const a=new Date(start+"T00:00:00"), b=new Date(end+"T00:00:00"); return Math.max(1,Math.floor((b-a)/86400000)+1); }
+function wavePts(amp,yBase,phase=0,steps=80){ const pts=[]; for(let i=0;i<=steps;i++){ const x=(i/steps)*370; const y=yBase+amp*Math.sin((i/steps)*Math.PI*4+phase); pts.push(`${x},${y}`);} return pts.join(" "); }
+function useShown(active){ const [s,setS]=useState(false); useEffect(()=>{ if(active){const t=setTimeout(()=>setS(true),60); return ()=>clearTimeout(t);} setS(false); },[active]); return s; }
+function getTheme(tweaks){ return { ...(THEME_PRESETS[tweaks.themePreset]||THEME_PRESETS.blossom), pink:tweaks.accentColor||((THEME_PRESETS[tweaks.themePreset]||THEME_PRESETS.blossom).pink) }; }
+function validateData(data){ return data && data.metrics && Array.isArray(data.people) && data.people.length>=2; }
+function decodeUtf8Base64(base64){
+  const binary = atob(base64);
+  const bytes = Uint8Array.from(binary, (c)=>c.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+}
+function getBakedPayload(){
+  return window.__CHATVIZ_BAKED__ && typeof window.__CHATVIZ_BAKED__ === "object"
+    ? window.__CHATVIZ_BAKED__
+    : null;
+}
+function loadIncomingData(){
+  const baked = getBakedPayload();
+  if(baked?.data) return baked.data;
+  const params=new URLSearchParams(window.location.search);
+  const encoded=params.get("data");
+  if(encoded){ try{return JSON.parse(decodeUtf8Base64(encoded));}catch{} }
+  try{ const raw=localStorage.getItem(STORAGE_DATA); if(raw) return JSON.parse(raw);}catch{}
+  return DEFAULT_DATA;
+}
+function loadStoredTweaks(){
+  const baked = getBakedPayload();
+  if(baked?.tweaks) return baked.tweaks;
+  try{
+    const raw=localStorage.getItem(STORAGE_TWEAKS);
+    return raw?JSON.parse(raw):{};
+  }catch{return{};}
+}
+function createTweaksFromData(data,{useStored=true}={}){
+  const stored = useStored ? loadStoredTweaks() : {};
+  const base = {
+    ...TWEAK_DEFAULTS,
+    ...(data.customization||{}),
+    ...stored,
+  };
+  return {
+    ...base,
+    relationshipType: base.relationshipType || data.customization?.relationshipType || "romantic",
+    themePreset: base.themePreset || data.customization?.themePreset || "blossom",
+    coverTitle: useStored ? (stored.coverTitle || data.slides?.cover?.title || "REPORT") : (data.slides?.cover?.title || "REPORT"),
+    startDate: useStored ? (stored.startDate || data.customization?.startDate || "") : (data.customization?.startDate || ""),
+    endDate: useStored ? (stored.endDate || data.customization?.endDate || "") : (data.customization?.endDate || ""),
+    // Always default names from uploaded dataset to avoid stale cross-dataset overrides.
+    person1Name: data.people?.[0]?.name || "",
+    person2Name: data.people?.[1]?.name || "",
+  };
+}
+function buildVM(data,tweaks){
+  const people=[...(data.people||DEFAULT_DATA.people)];
+  if(tweaks.person1Name) people[0]={...people[0],name:tweaks.person1Name};
+  if(tweaks.person2Name) people[1]={...people[1],name:tweaks.person2Name};
+  const m=data.metrics||DEFAULT_DATA.metrics;
+  const rel=REL_COPY[tweaks.relationshipType]||REL_COPY.romantic;
+  const topWords=(m.topWords||[]).slice(0,4);
+  const topDays=(m.topDays||[]).slice(0,5);
+  const maxCount=Math.max(1,...topDays.map(d=>d.count||0));
+  const start=tweaks.startDate||data.customization?.startDate||"";
+  const end=tweaks.endDate||data.customization?.endDate||"";
+  const days=tweaks.daysCount||calcDays(start,end)||m.totalDays||"500";
+  const langLines = [
+    {key:"zh",color:C.sky,amp:22,yBase:65,phase:0,delay:0.4,sw:22,label:"中文",pct:pct(m.languageShare?.zh)},
+    {key:"en",color:C.orange,amp:14,yBase:168,phase:1.1,delay:0.8,sw:14,label:"English",pct:pct(m.languageShare?.en)},
+    {key:"mixed",color:C.olive,amp:9,yBase:248,phase:2.2,delay:1.1,sw:9,label:"mixed / other",pct:pct(m.languageShare?.mixed)}
+  ].filter((line)=>Number(m.languageShare?.[line.key]||0) > 0);
+
+  return {
+    people,m,rel,topWords,start,end,days,
+    coverTitle:tweaks.coverTitle||data.slides?.cover?.title||"REPORT",
+    coverStart:data.slides?.cover?.startYear||2024,
+    coverEnd:data.slides?.cover?.endYear||2026,
+    daysBalls: topDays.map((d,i)=>({date:shortDate(d.date),sub:`${comma(d.count)} msgs`,color:["#6B8E5A","#7AAFB0","#5A7896","#D4A030","#E07878"][i%5],r:72+Math.round((d.count/maxCount)*34)})),
+    langLines: langLines.length ? langLines : [{key:"mixed",color:C.olive,amp:16,yBase:150,phase:0.6,delay:0.4,sw:12,label:"messages",pct:"100.0%"}],
+    showSeasons: Number(m.totalDays||0) >= 365,
+    showCalls: Number(m.calls?.count||0) > 0 || Number(m.calls?.totalSeconds||0) > 0
+  };
+}
+function Blossom({x,y,size=1,delay=0,color="#E8748A"}){ const w=34*size,h=34*size; return(<div style={{position:"absolute",left:x,top:y,pointerEvents:"none",animation:`bloom 0.65s ${delay}s both`}}><svg width={w} height={h} viewBox="0 0 34 34">{[0,72,144,216,288].map((a,i)=>{const rad=(a-90)*Math.PI/180;const cx=17+8*Math.cos(rad),cy=17+8*Math.sin(rad);return <ellipse key={i} cx={cx} cy={cy} rx={5.5} ry={3.5} fill={color} transform={`rotate(${a-90},${cx},${cy})`}/>;})}<circle cx={17} cy={17} r={3.2} fill="#FFF0B0"/></svg></div>);}
+function Cloud({x,y,s=1}){ return(<div style={{position:"absolute",left:x,top:y,pointerEvents:"none"}}><svg width={100*s} height={52*s} viewBox="0 0 100 52"><ellipse cx={50} cy={36} rx={40} ry={20} fill="white" opacity={0.86}/><ellipse cx={34} cy={28} rx={26} ry={18} fill="white" opacity={0.86}/><ellipse cx={68} cy={30} rx={22} ry={16} fill="white" opacity={0.86}/></svg></div>);}
+
+function SlideCover({active,vm}){ const shown=useShown(active); const blossoms=[{x:"5%",y:"13%",s:0.75,d:0.25,c:"#F2A7BA"},{x:"72%",y:"8%",s:0.6,d:0.35,c:C.pink},{x:"58%",y:"27%",s:0.65,d:0.28,c:"#E85070"}]; const bottomBl=[{x:"1%",y:"50%",s:1.55,d:0.42,c:"#F2A7BA"},{x:"27%",y:"56%",s:1.75,d:0.4,c:"#E85070"},{x:"57%",y:"53%",s:1.65,d:0.37,c:C.pink},{x:"86%",y:"54%",s:1.45,d:0.42,c:"#F2A7BA"}]; return(<div style={{width:"100%",height:"100%",background:`linear-gradient(180deg,#8EC8E8 0%,${C.sky} 55%,#93BCE2 100%)`,position:"relative",overflow:"hidden"}}>{shown&&<><Cloud x={-18} y={68} s={1.3}/><Cloud x={215} y={42} s={0.88}/></>}{shown&&blossoms.map((b,i)=><Blossom key={i} x={b.x} y={b.y} size={b.s} delay={b.d} color={b.c}/>)}{shown&&<div style={{position:"absolute",top:"26%",left:0,right:0,textAlign:"center",animation:"floatUp 0.9s 0.4s both"}}><div style={{fontFamily:"Caveat",fontSize:26,color:"white",lineHeight:1.65,letterSpacing:3,textShadow:"0 2px 10px rgba(0,0,0,0.18)"}}>{vm.coverStart}<br/>to<br/>{vm.coverEnd}</div></div>}<div style={{position:"absolute",bottom:0,left:0,right:0,height:"43%"}}><div style={{position:"absolute",bottom:0,left:0,right:0,height:"64%",background:`linear-gradient(0deg,#D84E6A 0%,${C.pink} 65%,transparent 100%)`}}/>{shown&&bottomBl.map((b,i)=><Blossom key={i} x={b.x} y={b.y} size={b.s} delay={b.d} color={b.c}/>)}</div>{shown&&<div style={{position:"absolute",bottom:"7%",left:0,right:0,textAlign:"center",animation:"floatUp 0.85s 0.18s both"}}><div style={{fontFamily:"Caveat",fontWeight:700,fontSize:64,color:C.dark,lineHeight:0.85,letterSpacing:-1}}>{vm.coverTitle}</div><div style={{fontFamily:"Caveat",fontSize:29,color:C.dark,marginTop:7}}>{vm.people[0].name} × {vm.people[1].name}.</div><div style={{fontFamily:"Space Grotesk",fontSize:12,color:C.dark,opacity:0.55,marginTop:8}}>{vm.rel.subtitle}</div></div>}</div>); }
+function SlideNumbers({active,vm}){ const shown=useShown(active); const stats=[{num:comma(vm.m.totalMessages),label:"total messages sent"},{num:comma(vm.m.longestStreakDays),label:"days in a row"},{num:comma(vm.m.avgMessagesPerDay),label:"average messages/day"}]; return(<div style={{width:"100%",height:"100%",background:C.cream,position:"relative",overflow:"hidden",display:"flex",flexDirection:"column",justifyContent:"center",padding:"70px 34px 55px"}}>{shown&&<div style={{animation:"slideUp 0.6s both",marginBottom:32}}><div style={{display:"flex",alignItems:"center",gap:10}}><div style={{fontFamily:"Caveat",fontWeight:700,fontSize:64,color:C.orange,lineHeight:1}}>overview...</div><span style={{fontSize:30,marginTop:6}}>🕐</span></div></div>}{stats.map((s,i)=><div key={i} style={{marginBottom:i<2?28:0,animation:shown?`countIn 0.7s ${0.18*(i+1)}s both`:"none"}}><div style={{fontFamily:"Space Grotesk",fontWeight:700,fontSize:58,color:C.dark,lineHeight:1}}>{s.num}</div><div style={{fontFamily:"Caveat",fontSize:20,color:C.muted,marginTop:2}}>{s.label}</div></div>)}{shown&&<div style={{marginTop:26,animation:"slideUp 0.6s 0.72s both"}}><div style={{fontFamily:"Caveat",fontSize:19,color:C.pink}}>{comma(vm.m.activeDays)} active days out of {comma(vm.m.totalDays)}</div></div>}</div>); }
+function SlideWho({active,vm}){ const shown=useShown(active); const people=(vm.m.replyStats||[]).slice(0,2).map((p,i)=>({name:p.name,color:i===0?C.sky:C.pink,median:`${Math.round(p.medianSec||0)}s`,mean:fmtMean(p.meanSec),n:`${comma(p.count)} replies`})); return(<div style={{width:"100%",height:"100%",background:C.cream,position:"relative",overflow:"hidden",display:"flex",flexDirection:"column",justifyContent:"center",padding:"70px 30px 55px"}}>{shown&&<div style={{animation:"slideUp 0.6s both",marginBottom:36}}><div style={{fontFamily:"Caveat",fontWeight:700,fontSize:56,color:C.dark,lineHeight:1.05}}>how fast do you reply?</div><div style={{fontFamily:"Space Grotesk",fontSize:13,color:C.mutedSoft,marginTop:4,letterSpacing:0.5}}>median response time</div></div>}{people.map((p,i)=><div key={i} style={{marginBottom:22,animation:shown?`countIn 0.7s ${0.2+i*0.18}s both`:"none"}}><div style={{display:"flex",alignItems:"flex-end",gap:12,marginBottom:10}}><div style={{width:10,height:10,borderRadius:"50%",background:p.color,flexShrink:0,marginBottom:6}}/><div style={{fontFamily:"Caveat",fontSize:22,color:C.muted}}>{p.name}</div></div><div style={{display:"flex",alignItems:"baseline",gap:14}}><div style={{fontFamily:"Space Grotesk",fontWeight:700,fontSize:72,color:C.dark,lineHeight:1}}>{p.median}</div><div style={{fontFamily:"Caveat",fontSize:20,color:C.mutedSoft}}>median</div></div><div style={{display:"flex",gap:24,marginTop:8}}><div><div style={{fontFamily:"Space Grotesk",fontWeight:600,fontSize:18,color:C.muted}}>{p.mean}</div><div style={{fontFamily:"Caveat",fontSize:15,color:C.mutedSoft}}>mean</div></div><div><div style={{fontFamily:"Space Grotesk",fontWeight:600,fontSize:18,color:C.muted}}>{p.n}</div><div style={{fontFamily:"Caveat",fontSize:15,color:C.mutedSoft}}>counted</div></div></div>{i===0&&<div style={{height:1,background:"rgba(0,0,0,0.07)",margin:"18px 0 0"}}/>}</div>)}</div>); }
+function SlideBaobao({active,vm}){ const shown=useShown(active); const top=vm.topWords[0]||{word:"宝宝",count:0}; const secondary=vm.topWords.slice(1,4).map((w)=>({word:w.word,count:`${comma(w.count)}×`,note:"top word"})); return(<div style={{width:"100%",height:"100%",background:C.cream,position:"relative",overflow:"hidden",display:"flex",flexDirection:"column",justifyContent:"center",padding:"70px 34px 55px"}}>{shown&&<><div style={{animation:"slideUp 0.6s both",marginBottom:8}}><div style={{fontFamily:"Caveat",fontWeight:700,fontSize:56,color:C.dark,lineHeight:1}}>your most-used word</div></div><div style={{animation:"bloom 0.85s 0.28s both",marginBottom:4}}><div style={{fontFamily:"Caveat",fontWeight:700,fontSize:108,color:C.dark,lineHeight:1}}>{top.word}</div></div><div style={{animation:"slideUp 0.6s 0.52s both",marginBottom:32}}><div style={{fontFamily:"Space Grotesk",fontWeight:700,fontSize:44,color:C.orange}}>{comma(top.count)} times</div></div><div style={{height:1,background:"rgba(0,0,0,0.08)",marginBottom:24,animation:"fadeIn 0.6s 0.7s both"}}/><div style={{animation:"slideUp 0.6s 0.75s both"}}><div style={{fontFamily:"Caveat",fontSize:18,color:C.mutedSoft,marginBottom:14}}>and you also loved saying</div>{secondary.map((w,i)=><div key={i} style={{display:"flex",alignItems:"baseline",gap:12,marginBottom:12,animation:`slideUp 0.5s ${0.82+i*0.12}s both`}}><div style={{fontFamily:"Caveat",fontWeight:700,fontSize:32,color:C.dark,minWidth:56}}>{w.word}</div><div style={{fontFamily:"Space Grotesk",fontWeight:600,fontSize:15,color:C.orange}}>{w.count}</div><div style={{fontFamily:"Caveat",fontSize:16,color:C.mutedSoft}}>{w.note}</div></div>)}</div></>}</div>); }
+function SlideNight({active,vm}){ const shown=useShown(active); return(<div style={{width:"100%",height:"100%",background:C.navy,position:"relative",overflow:"hidden",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}><svg style={{position:"absolute",top:0,left:0,width:"100%",height:"60%",pointerEvents:"none"}} viewBox="0 0 390 506">{shown&&STARS.map((s,i)=><circle key={i} cx={s.x} cy={s.y} r={s.r} fill="white" style={{animation:`twinkle ${1.6+s.d}s ${s.d}s infinite`,opacity:0.55}}/>)}</svg><div style={{textAlign:"center",padding:"0 34px",zIndex:2}}>{shown&&<><div style={{fontFamily:"Caveat",fontWeight:700,fontSize:64,color:"rgba(255,255,255,0.92)",lineHeight:1,animation:"slideUp 0.6s 0.22s both"}}>night owls</div><div style={{fontFamily:"Space Grotesk",fontWeight:700,fontSize:76,color:"#FFF3AA",lineHeight:1,marginTop:12,animation:"bloom 0.95s 0.48s both"}}>{hourLabel(vm.m.busiestHour?.hour||0)}</div><div style={{fontFamily:"Caveat",fontSize:28,color:"white",marginTop:5,animation:"slideUp 0.6s 0.68s both"}}>was your busiest hour</div></>}</div></div>); }
+function SlideLanguage({active,vm}){ const shown=useShown(active); const lines=vm.langLines; return(<div style={{width:"100%",height:"100%",background:C.cream,position:"relative",overflow:"hidden"}}>{shown&&<div style={{position:"absolute",top:"11%",left:32,animation:"slideUp 0.6s both"}}><div style={{fontFamily:"Caveat",fontWeight:700,fontSize:54,color:C.dark,lineHeight:1.05}}>talking in two languages</div></div>}<svg style={{position:"absolute",top:"27%",left:10,width:"calc(100% - 20px)",height:"46%"}} viewBox="0 0 370 300" overflow="visible"><defs>{lines.map((l,i)=><clipPath key={i} id={`lc${i}`}><rect x={0} y={-60} height={360} width={shown?370:0} style={{transition:`width 1.55s ${l.delay}s ease-out`}}/></clipPath>)}</defs>{lines.map((l,i)=><polyline key={i} points={wavePts(l.amp,l.yBase,l.phase)} fill="none" stroke={l.color} strokeWidth={l.sw} strokeLinecap="round" strokeLinejoin="round" clipPath={`url(#lc${i})`}/>)}</svg>{shown&&<div style={{position:"absolute",bottom:"8%",left:32,animation:"slideUp 0.6s 1.5s both"}}>{lines.map((l,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:10,marginBottom:11}}><div style={{width:28,height:11,borderRadius:6,background:l.color}}/><div style={{fontFamily:"Caveat",fontSize:22,color:C.dark}}>{l.label}</div><div style={{fontFamily:"Space Grotesk",fontWeight:700,fontSize:16,color:C.muted}}>{l.pct}</div></div>)}</div>}</div>); }
+function SlideSeasons({active}){ const shown=useShown(active); const seasons=[{label:"Spring",pct:"24%",color:C.pink,amp:18,y:62,phase:0.3,delay:0.28,sw:14},{label:"Summer",pct:"19%",color:C.yellow,amp:22,y:162,phase:1.2,delay:0.52,sw:14},{label:"Fall",pct:"34%",color:C.orange,amp:16,y:258,phase:2.1,delay:0.76,sw:14},{label:"Winter",pct:"23%",color:C.sky,amp:28,y:348,phase:0.7,delay:1.0,sw:14}]; return(<div style={{width:"100%",height:"100%",background:C.cream,position:"relative",overflow:"hidden"}}>{shown&&<div style={{position:"absolute",top:"9%",left:0,right:0,textAlign:"center",animation:"slideUp 0.6s both"}}><div style={{fontFamily:"Caveat",fontWeight:700,fontSize:54,color:C.dark,lineHeight:1.05}}>4 seasons of texting</div></div>}<svg style={{position:"absolute",top:"20%",left:0,width:"100%",height:"72%"}} viewBox="0 0 390 430" overflow="visible"><defs>{seasons.map((s,i)=><clipPath key={i} id={`sc${i}`}><rect x={0} y={-60} height={520} width={shown?390:0} style={{transition:`width 1.45s ${s.delay}s ease-out`}}/></clipPath>)}</defs>{seasons.map((s,i)=>{const pts=[]; for(let j=0;j<=60;j++){const x=(j/60)*260;const y=s.y+s.amp*Math.sin((j/60)*Math.PI*4+s.phase);pts.push(`${x},${y}`);} return <polyline key={i} points={pts.join(" ")} fill="none" stroke={s.color} strokeWidth={s.sw} strokeLinecap="round" strokeLinejoin="round" clipPath={`url(#sc${i})`}/>;})}</svg></div>); }
+function SlideDays({active,vm}){
+  const shown=useShown(active);
+  const canvasRef=useRef(null);
+  const W=390, H=844;
+
+  useEffect(()=>{
+    if(!active||!canvasRef.current||typeof Matter==="undefined") return;
+    const {Engine,Render,Runner,Bodies,World,Mouse,MouseConstraint,Events}=Matter;
+    const engine=Engine.create({gravity:{y:1.4}});
+    const render=Render.create({
+      canvas:canvasRef.current,
+      engine,
+      options:{width:W,height:H,wireframes:false,background:"#B8D0CC"},
+    });
+
+    World.add(engine.world,[
+      Bodies.rectangle(W/2,H+20,W+40,40,{isStatic:true,render:{fillStyle:"#B8D0CC"}}),
+      Bodies.rectangle(-20,H/2,40,H+40,{isStatic:true,render:{fillStyle:"#B8D0CC"}}),
+      Bodies.rectangle(W+20,H/2,40,H+40,{isStatic:true,render:{fillStyle:"#B8D0CC"}}),
+    ]);
+
+    const days=(vm.daysBalls.length?vm.daysBalls:[{date:"-",sub:"-",color:"#6B8E5A",r:75}]);
+    const balls=days.map((d,i)=>{
+      const x=80+i*60+(Math.random()-0.5)*16;
+      const y=-d.r*2 - i*120;
+      const b=Bodies.circle(x,y,d.r,{
+        restitution:0.45,friction:0.08,frictionAir:0.015,
+        render:{fillStyle:d.color}
+      });
+      b.dayData=d;
+      return b;
+    });
+    World.add(engine.world,balls);
+
+    const mouse=Mouse.create(canvasRef.current);
+    const mc=MouseConstraint.create(engine,{mouse,constraint:{stiffness:0.22,render:{visible:false}}});
+    World.add(engine.world,mc);
+    render.mouse=mouse;
+
+    Events.on(render,"afterRender",()=>{
+      const ctx=render.context;
+      balls.forEach((b)=>{
+        const {x,y}=b.position;
+        const d=b.dayData;
+        ctx.save();
+        ctx.translate(x,y);
+        ctx.rotate(b.angle);
+        ctx.textAlign="center";
+        ctx.textBaseline="middle";
+        ctx.fillStyle="rgba(255,255,255,0.95)";
+        ctx.font=`700 ${Math.round(d.r*0.34)}px 'Caveat',cursive`;
+        ctx.fillText(d.date,0,-d.r*0.18);
+        ctx.fillStyle="rgba(255,255,255,0.65)";
+        ctx.font=`${Math.round(d.r*0.24)}px 'Space Grotesk',sans-serif`;
+        ctx.fillText(d.sub,0,d.r*0.28);
+        ctx.restore();
+      });
+    });
+
+    Render.run(render);
+    const runner=Runner.create();
+    Runner.run(runner,engine);
+
+    return ()=>{
+      Render.stop(render);
+      Runner.stop(runner);
+      World.clear(engine.world,false);
+      Engine.clear(engine);
+    };
+  },[active,vm]);
+
+  return(
+    <div style={{width:"100%",height:"100%",background:C.lightBlue,position:"relative",overflow:"hidden"}}>
+      <canvas ref={canvasRef} width={W} height={H} style={{position:"absolute",top:0,left:0,width:"100%",height:"100%"}}/>
+      {shown&&(
+        <div style={{position:"absolute",top:56,left:32,pointerEvents:"none",animation:"slideUp 0.5s both"}}>
+          <div style={{fontFamily:"Caveat",fontWeight:700,fontSize:54,color:C.dark,lineHeight:1.05}}>most active days</div>
+        </div>
+      )}
+    </div>
+  );
+}
+function SlideCalls({active,vm}){ const shown=useShown(active); const details=[{label:"Longest",val:fmtDuration(vm.m.calls?.longestSeconds)},{label:"Average",val:fmtDuration(vm.m.calls?.averageSeconds)}]; return(<div style={{width:"100%",height:"100%",background:"#4F6338",position:"relative",overflow:"hidden",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}><svg style={{position:"absolute",top:0,right:0,width:130,height:160,opacity:0.4,pointerEvents:"none"}} viewBox="0 0 130 160"><path d="M120,10 Q100,30 90,50 Q80,70 95,85 Q110,100 95,115 Q80,130 90,150" fill="none" stroke="#A8C870" strokeWidth={6} strokeLinecap="round"/><path d="M105,10 Q88,35 80,55" fill="none" stroke="#A8C870" strokeWidth={4} strokeLinecap="round"/>{[[90,50],[95,85],[90,150]].map(([x,y],i)=><ellipse key={i} cx={x} cy={y} rx={6} ry={4} fill="#8AB060" opacity={0.7} transform={`rotate(${i*30},${x},${y})`}/> )}</svg><svg style={{position:"absolute",bottom:0,left:0,width:130,height:160,opacity:0.4,pointerEvents:"none",transform:"rotate(180deg)"}} viewBox="0 0 130 160"><path d="M120,10 Q100,30 90,50 Q80,70 95,85 Q110,100 95,115 Q80,130 90,150" fill="none" stroke="#A8C870" strokeWidth={6} strokeLinecap="round"/>{[[90,50],[95,85]].map(([x,y],i)=><ellipse key={i} cx={x} cy={y} rx={6} ry={4} fill="#8AB060" opacity={0.7}/> )}</svg>{shown&&<div style={{animation:"bloom 0.7s both",marginBottom:20}}><svg width={72} height={72} viewBox="0 0 72 72"><path d="M16,52 Q12,44 14,34 Q16,24 24,18 Q32,12 36,16 Q40,20 36,28 Q32,32 30,34 Q38,46 44,50 Q46,48 50,44 Q54,40 58,42 Q64,48 60,56 Q56,64 46,64 Q36,64 28,60 Q20,56 16,52 Z" fill="none" stroke="rgba(255,255,255,0.75)" strokeWidth={4} strokeLinecap="round" strokeLinejoin="round"/></svg></div>}{shown&&<div style={{textAlign:"center",zIndex:2,padding:"0 34px"}}><div style={{fontFamily:"Caveat",fontWeight:700,fontSize:58,color:"rgba(255,255,255,0.92)",lineHeight:1,marginBottom:12,animation:"slideUp 0.6s 0.22s both"}}>time on<br/>the phone</div><div style={{fontFamily:"Space Grotesk",fontWeight:700,fontSize:72,color:"white",lineHeight:1,letterSpacing:-1,animation:"bloom 0.9s 0.42s both"}}>{fmtDuration(vm.m.calls?.totalSeconds)}</div><div style={{fontFamily:"Caveat",fontSize:20,color:"rgba(255,255,255,0.55)",marginTop:8,animation:"slideUp 0.6s 0.62s both"}}>across {comma(vm.m.calls?.count)} calls</div><div style={{marginTop:32,animation:"slideUp 0.6s 0.8s both"}}>{details.map((item,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:12,marginBottom:12,justifyContent:"center"}}><div style={{fontFamily:"Caveat",fontSize:20,color:"rgba(255,255,255,0.5)",minWidth:70,textAlign:"right"}}>{item.label} :</div><svg width={60} height={16} viewBox="0 0 60 16"><path d="M2,8 Q10,2 18,8 Q26,14 34,8 Q42,2 50,8 Q56,12 60,8" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth={2.5} strokeLinecap="round"/></svg><div style={{fontFamily:"Space Grotesk",fontWeight:600,fontSize:18,color:"white"}}>{item.val}</div></div>)}</div></div>}</div>); }
+function SlideForever({active,onReplay,vm}){ const shown=useShown(active); const bls=[{x:"2%",y:"4%",s:1.05,d:0.1,c:C.pink},{x:"70%",y:"2%",s:0.82,d:0.22,c:"#E85070"},{x:"83%",y:"14%",s:0.62,d:0.16,c:C.pink},{x:"9%",y:"19%",s:0.72,d:0.28,c:"#F2A7BA"},{x:"60%",y:"20%",s:0.52,d:0.32,c:C.pink},{x:"4%",y:"68%",s:0.95,d:0.38,c:"#F2A7BA"},{x:"76%",y:"70%",s:0.72,d:0.2,c:C.pink},{x:"86%",y:"52%",s:0.58,d:0.42,c:"#E85070"},{x:"18%",y:"78%",s:0.68,d:0.3,c:C.pink},{x:"44%",y:"83%",s:0.85,d:0.12,c:"#F2A7BA"}]; return(<div style={{width:"100%",height:"100%",background:C.blush,position:"relative",overflow:"hidden",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>{shown&&bls.map((b,i)=><Blossom key={i} x={b.x} y={b.y} size={b.s} delay={b.d} color={b.c}/>)}<svg style={{position:"absolute",bottom:0,left:0,width:"44%",height:"50%",opacity:0.5}} viewBox="0 0 180 440"><path d="M32 440 Q42 340 52 240 Q62 195 84 145 M52 240 Q32 215 12 196 M60 295 Q40 278 20 265 M68 345 Q50 336 35 324" stroke={C.sky} strokeWidth={11} fill="none" strokeLinecap="round"/></svg><svg style={{position:"absolute",bottom:0,right:0,width:"44%",height:"50%",opacity:0.5,transform:"scaleX(-1)"}} viewBox="0 0 180 440"><path d="M32 440 Q42 340 52 240 Q62 195 84 145 M52 240 Q32 215 12 196 M60 295 Q40 278 20 265 M68 345 Q50 336 35 324" stroke={C.sky} strokeWidth={11} fill="none" strokeLinecap="round"/></svg><div style={{textAlign:"center",padding:"0 38px",zIndex:2}}>{shown&&<><div style={{fontFamily:"Space Grotesk",fontSize:14,color:C.muted,textTransform:"uppercase",letterSpacing:2,animation:"slideUp 0.6s 0.1s both"}}>{vm.rel.endingTitle}</div><div style={{fontFamily:"Caveat",fontSize:22,color:C.muted,animation:"slideUp 0.6s 0.18s both"}}>{vm.days} {vm.rel.endingTagline} {vm.rel.icon}</div><div style={{fontFamily:"Caveat",fontWeight:700,fontSize:62,color:C.dark,marginTop:16,lineHeight:1.15,animation:"bloom 0.95s 0.42s both"}}>{vm.people[0].name}<br/>× {vm.people[1].name}</div><div style={{fontFamily:"Space Grotesk",fontSize:13,color:C.mutedSoft,marginTop:18,letterSpacing:2,textTransform:"uppercase",animation:"slideUp 0.6s 0.72s both"}}>{vm.start||"2024"} — {vm.end||"present"}</div><button onClick={(e)=>{e.stopPropagation();onReplay&&onReplay();}} style={{marginTop:40,display:"inline-flex",alignItems:"center",gap:10,background:"none",border:`1.5px solid ${C.dark}`,borderRadius:30,padding:"11px 24px",cursor:"pointer",animation:"slideUp 0.6s 1.0s both"}}><svg width={16} height={16} viewBox="0 0 16 16" fill="none"><path d="M2 8A6 6 0 1 0 8 2" stroke={C.dark} strokeWidth={1.8} strokeLinecap="round"/><path d="M8 0 L8 4 L5 2 Z" fill={C.dark}/></svg><span style={{fontFamily:"Caveat",fontSize:20,color:C.dark}}>watch again</span></button></>}</div></div>); }
+
+function App(){
+  const [data,setData]=useState(()=>loadIncomingData());
+  const [cur,setCur]=useState(()=>{
+    const baked = getBakedPayload();
+    if(typeof baked?.slideIndex === "number") return Math.max(0, Math.min(9, baked.slideIndex));
+    try{const s=localStorage.getItem(STORAGE_SLIDE); return s?Math.min(parseInt(s,10),9):0;}catch{return 0;}
+  });
+  const [tweaks,setTweaks]=useState(()=>createTweaksFromData(data,{useStored:true}));
+  const [tweaksVisible,setTweaksVisible]=useState(true);
+  const touchX=useRef(null);
+
+  C = getTheme(tweaks);
+  const vm = useMemo(()=>buildVM(data,tweaks),[data,tweaks]);
+
+  useEffect(()=>{
+    const scale=()=>{
+      const s=Math.min(1,window.innerWidth/400,window.innerHeight/860);
+      const el=document.querySelector(".phone-outer");
+      if(el) el.style.transform=`scale(${s})`;
+    };
+    scale();
+    window.addEventListener("resize",scale);
+    return()=>window.removeEventListener("resize",scale);
+  },[]);
+  useEffect(()=>{
+    if(tweaks.themePreset==="midnight"){
+      document.body.style.background="#231D3D";
+      document.body.style.backgroundImage="radial-gradient(ellipse at 30% 30%,#3A2E5A 0%,#231D3D 60%,#1F1A35 100%)";
+    }else{
+      document.body.style.background=C.cream;
+      document.body.style.backgroundImage="none";
+    }
+  },[tweaks.themePreset,tweaks.accentColor]);
+  useEffect(()=>{ try{localStorage.setItem(STORAGE_TWEAKS,JSON.stringify(tweaks)); localStorage.setItem(STORAGE_DATA,JSON.stringify(data));}catch{} },[tweaks,data]);
+  useEffect(()=>{
+    const h=(e)=>{
+      if(e.data?.type==="__activate_edit_mode") setTweaksVisible(true);
+    };
+    window.addEventListener("message",h);
+    window.parent.postMessage({type:"__edit_mode_available"},"*");
+    return ()=>window.removeEventListener("message",h);
+  },[]);
+
+  useEffect(()=>{
+    const btn=document.getElementById("downloadStandaloneBtn");
+    const err=document.getElementById("viewerError");
+    if(!btn) return;
+
+    const onDownload=()=>{
+      try{
+        const payload = {
+          data,
+          tweaks,
+          slideIndex: cur,
+        };
+        const payloadJson = JSON.stringify(payload).replace(/</g, "\\u003c");
+        // Use escaped closing tag so this inline JS string does not terminate the current script block.
+        const bakedScript = `<script>window.__CHATVIZ_BAKED__=${payloadJson};<\\/script>`;
+        const source = document.documentElement.outerHTML;
+        const marker = '<script type="text/babel">';
+        const output = source.includes(marker)
+          ? source.replace(marker, `${bakedScript}\n${marker}`)
+          : `${source}\n${bakedScript}`;
+        const blob = new Blob([`<!DOCTYPE html>\n${output}`], { type: "text/html;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "chat-viz-standalone.html";
+        a.click();
+        URL.revokeObjectURL(url);
+        err.textContent = "";
+      }catch(downloadErr){
+        err.textContent = `Download failed: ${downloadErr.message}`;
+      }
+    };
+
+    btn.addEventListener("click", onDownload);
+    return ()=>btn.removeEventListener("click", onDownload);
+  },[data,tweaks,cur]);
+
+  const go=(n)=>{ const next=Math.max(0,Math.min(9,n)); setCur(next); try{localStorage.setItem(STORAGE_SLIDE,next);}catch{} };
+  const onTouchStart=(e)=>{touchX.current=e.touches[0].clientX;};
+  const onTouchEnd=(e)=>{ if(touchX.current===null) return; const dx=e.changedTouches[0].clientX-touchX.current; if(Math.abs(dx)>38) go(cur+(dx<0?1:-1)); touchX.current=null; };
+  const onClick=(e)=>{ const r=e.currentTarget.getBoundingClientRect(); const x=e.clientX-r.left; if(x<r.width*0.32) go(cur-1); else if(x>r.width*0.68) go(cur+1); };
+  const setTweak=(k,v)=>{ const next={...tweaks,[k]:v}; setTweaks(next); window.parent.postMessage({type:"__edit_mode_set_keys",edits:next},"*"); };
+
+  const slides=[SlideCover,SlideNumbers,SlideWho,SlideBaobao,SlideNight,SlideLanguage];
+  if(vm.showSeasons) slides.push(SlideSeasons);
+  slides.push(SlideDays);
+  if(vm.showCalls) slides.push(SlideCalls);
+  slides.push(SlideForever);
+
+  return(
+    <>
+      <div className="phone-outer">
+        <div className="phone" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} onClick={onClick}>
+          <div className="di"/>
+          <div className="slides">
+            {slides.map((Slide,i)=>(
+              <div key={i} className="slide" style={{transform:`translateX(${(i-cur)*100}%)`}}>
+                <Slide active={i===cur} onReplay={()=>go(0)} tweaks={tweaks} vm={vm}/>
+              </div>
+            ))}
+          </div>
+          <div className="dots">
+            {slides.map((_,i)=><div key={i} className={`dot${i===cur?" on":""}`} style={{width:i===cur?18:5}}/>)}
+          </div>
+        </div>
+      </div>
+
+      {tweaksVisible&&(
+        <div style={{position:"fixed",bottom:24,right:24,zIndex:9999,background:"white",borderRadius:16,boxShadow:"0 8px 40px rgba(0,0,0,0.18)",padding:"18px 20px",width:"min(250px, calc(100vw - 24px))",maxHeight:"70vh",overflowY:"auto",fontFamily:"Space Grotesk"}}>
+          <div style={{fontWeight:700,fontSize:13,marginBottom:14,letterSpacing:0.5,color:"#222"}}>Tweaks</div>
+          <label style={{display:"block",fontSize:11,color:"#999",marginBottom:4}}>Cover title</label>
+          <input type="text" value={tweaks.coverTitle||""} onChange={e=>setTweak("coverTitle",e.target.value)} style={{width:"100%",border:"1.5px solid #eee",borderRadius:8,padding:"6px 10px",fontSize:14,marginBottom:8}}/>
+          <label style={{display:"block",fontSize:11,color:"#999",marginBottom:4}}>Person 1</label>
+          <input type="text" value={tweaks.person1Name||""} onChange={e=>setTweak("person1Name",e.target.value)} style={{width:"100%",border:"1.5px solid #eee",borderRadius:8,padding:"6px 10px",fontSize:14,marginBottom:8}}/>
+          <label style={{display:"block",fontSize:11,color:"#999",marginBottom:4}}>Person 2</label>
+          <input type="text" value={tweaks.person2Name||""} onChange={e=>setTweak("person2Name",e.target.value)} style={{width:"100%",border:"1.5px solid #eee",borderRadius:8,padding:"6px 10px",fontSize:14,marginBottom:8}}/>
+          <label style={{display:"block",fontSize:11,color:"#999",marginBottom:4}}>Relationship</label>
+          <select value={tweaks.relationshipType||"romantic"} onChange={e=>setTweak("relationshipType",e.target.value)} style={{width:"100%",border:"1.5px solid #eee",borderRadius:8,padding:"6px 10px",fontSize:14,marginBottom:8}}>
+            <option value="romantic">romantic</option><option value="friendship">friendship</option><option value="family">family</option>
+          </select>
+          <label style={{display:"block",fontSize:11,color:"#999",marginBottom:4}}>Theme</label>
+          <select value={tweaks.themePreset||"blossom"} onChange={e=>setTweak("themePreset",e.target.value)} style={{width:"100%",border:"1.5px solid #eee",borderRadius:8,padding:"6px 10px",fontSize:14,marginBottom:8}}>
+            <option value="blossom">blossom</option><option value="midnight">midnight</option><option value="forest">forest</option>
+          </select>
+          <label style={{display:"block",fontSize:11,color:"#999",marginBottom:4}}>Accent</label>
+          <input type="color" value={tweaks.accentColor||"#E8748A"} onChange={e=>setTweak("accentColor",e.target.value)} style={{width:"100%",border:"1.5px solid #eee",borderRadius:8,padding:0,height:30,marginBottom:8}}/>
+          <label style={{display:"block",fontSize:11,color:"#999",marginBottom:4}}>Start date</label>
+          <input type="date" value={tweaks.startDate||""} onChange={e=>setTweak("startDate",e.target.value)} style={{width:"100%",border:"1.5px solid #eee",borderRadius:8,padding:"6px 10px",fontSize:14,marginBottom:8}}/>
+          <label style={{display:"block",fontSize:11,color:"#999",marginBottom:4}}>End date</label>
+          <input type="date" value={tweaks.endDate||""} onChange={e=>setTweak("endDate",e.target.value)} style={{width:"100%",border:"1.5px solid #eee",borderRadius:8,padding:"6px 10px",fontSize:14,marginBottom:8}}/>
+          <label style={{display:"block",fontSize:11,color:"#999",marginBottom:4}}>Days count override</label>
+          <input type="text" value={tweaks.daysCount||""} onChange={e=>setTweak("daysCount",e.target.value)} style={{width:"100%",border:"1.5px solid #eee",borderRadius:8,padding:"6px 10px",fontSize:14}}/>
+        </div>
+      )}
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
 </html>
